@@ -28,8 +28,7 @@ export function Concept() {
 
         <div className={`mt-10 space-y-4 reveal reveal-d2 ${v}`}>
           <p className="font-body text-cream/55 text-base md:text-lg leading-loose font-light max-w-xl">
-            No production. No guestlist politics. A room of people who take
-            listening seriously.
+            The crowd is curated. The nights are hard to forget.
           </p>
           <p className="font-body text-cream/40 text-base leading-loose font-light max-w-xl">
             The View exists because there wasn't a version of this that felt right.

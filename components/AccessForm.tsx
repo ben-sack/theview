@@ -5,25 +5,51 @@ import { useInView } from "@/hooks/useInView";
 type FormState = {
   name: string;
   email: string;
-  instagram: string;
-  note: string;
+  phone: string;
+  ig_handle: string;
+  occupation: string;
+  referred_by: string;
 };
 
 export function AccessForm() {
   const { ref, inView } = useInView<HTMLElement>();
   const v = inView ? "in-view" : "";
 
-  const [form, setForm] = useState<FormState>({ name: "", email: "", instagram: "", note: "" });
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    email: "",
+    phone: "",
+    ig_handle: "",
+    occupation: "",
+    referred_by: "",
+  });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: connect to form backend (e.g. Resend, Formspree, or custom API route)
-    console.log("Access request:", form);
+    setError("");
+    setLoading(true);
+
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    setLoading(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Something went wrong. Please try again.");
+      return;
+    }
+
     setSubmitted(true);
   }
 
@@ -49,7 +75,7 @@ export function AccessForm() {
         {submitted ? (
           <div className={`reveal ${v}`}>
             <p className="font-display italic text-cream/60 text-2xl">
-              We'll be in touch.
+              You're on the list — we'll be in touch.
             </p>
           </div>
         ) : (
@@ -90,43 +116,81 @@ export function AccessForm() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="instagram" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                Instagram{" "}
-                <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
+              <label htmlFor="phone" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                Phone
               </label>
               <input
                 className="field"
-                id="instagram"
-                name="instagram"
+                id="phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                required
+                value={form.phone}
+                onChange={onChange}
+                placeholder="(555) 000-0000"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="ig_handle" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                Instagram
+              </label>
+              <input
+                className="field"
+                id="ig_handle"
+                name="ig_handle"
                 type="text"
-                value={form.instagram}
+                required
+                value={form.ig_handle}
                 onChange={onChange}
                 placeholder="@handle"
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="note" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                A short note{" "}
-                <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
+              <label htmlFor="occupation" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                Occupation
               </label>
-              <textarea
+              <input
                 className="field"
-                id="note"
-                name="note"
-                rows={4}
-                value={form.note}
+                id="occupation"
+                name="occupation"
+                type="text"
+                required
+                value={form.occupation}
                 onChange={onChange}
-                placeholder="How did you find this? What's your relationship to music?"
+                placeholder="What do you do?"
               />
             </div>
+
+            <div className="space-y-1">
+              <label htmlFor="referred_by" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                Referred by{" "}
+                <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
+              </label>
+              <input
+                className="field"
+                id="referred_by"
+                name="referred_by"
+                type="text"
+                value={form.referred_by}
+                onChange={onChange}
+                placeholder="Name or @handle"
+              />
+            </div>
+
+            {error && (
+              <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>
+            )}
 
             <div className="pt-2">
               <button
                 type="submit"
-                className="group inline-flex items-center gap-5 font-body text-[10px] tracking-[0.3em] uppercase text-cream/55 hover:text-cream/90 transition-colors duration-300 py-3 pr-2 -ml-1 pl-1"
+                disabled={loading}
+                className="group inline-flex items-center gap-5 font-body text-[10px] tracking-[0.3em] uppercase text-cream/55 hover:text-cream/90 transition-colors duration-300 py-3 pr-2 -ml-1 pl-1 disabled:opacity-40"
               >
-                <span>Send</span>
+                <span>{loading ? "Sending…" : "Send"}</span>
                 <span className="block h-px w-8 bg-rust/40 group-hover:w-14 group-hover:bg-amber/60 transition-all duration-400" />
               </button>
             </div>
@@ -137,7 +201,7 @@ export function AccessForm() {
         {/* Secondary CTA */}
         <div className={`mt-20 pt-10 border-t border-rust/10 reveal reveal-d4 ${v}`}>
           <a
-            href="https://instagram.com/theview.losangeles"
+            href="https://www.instagram.com/theview.la/"
             target="_blank"
             rel="noopener noreferrer"
             className="font-body text-[9px] tracking-[0.32em] uppercase text-tan/45 hover:text-tan/75 transition-colors"

@@ -30,7 +30,7 @@ export function Nav() {
         </a>
         <span className="text-rust/30 text-xs">/</span>
         <a
-          href="https://instagram.com/theview.losangeles"
+          href="https://www.instagram.com/theview.la/"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Instagram"

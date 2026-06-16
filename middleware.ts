@@ -4,10 +4,12 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Coming-soon page and unlock API are always public
+  // Coming-soon, unlock API, and admin routes bypass the site lock
   if (
     pathname.startsWith("/coming-soon") ||
-    pathname.startsWith("/api/unlock")
+    pathname.startsWith("/api/unlock") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin")
   ) {
     return NextResponse.next();
   }
