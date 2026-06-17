@@ -9,10 +9,12 @@ export function Footer() {
           © 2025
         </span>
         <a
-          href="/admin"
+          href="https://www.instagram.com/theview.la/"
+          target="_blank"
+          rel="noopener noreferrer"
           className="font-body text-tan/30 text-[10px] tracking-[0.28em] uppercase hover:text-tan/60 transition-colors"
         >
-          Admin
+          theview.la
         </a>
       </div>
     </footer>
