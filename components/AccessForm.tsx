@@ -7,7 +7,6 @@ type FormState = {
   email: string;
   phone: string;
   ig_handle: string;
-  occupation: string;
   referred_by: string;
 };
 
@@ -20,7 +19,6 @@ export function AccessForm() {
     email: "",
     phone: "",
     ig_handle: "",
-    occupation: "",
     referred_by: "",
   });
   const [submitted, setSubmitted] = useState(false);
@@ -145,22 +143,6 @@ export function AccessForm() {
                 value={form.ig_handle}
                 onChange={onChange}
                 placeholder="@handle"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="occupation" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                Occupation
-              </label>
-              <input
-                className="field"
-                id="occupation"
-                name="occupation"
-                type="text"
-                required
-                value={form.occupation}
-                onChange={onChange}
-                placeholder="What do you do?"
               />
             </div>
 

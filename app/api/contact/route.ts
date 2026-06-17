@@ -3,9 +3,9 @@ import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, email, phone, ig_handle, occupation, referred_by } = body;
+  const { name, email, phone, ig_handle, referred_by } = body;
 
-  if (!name || !email || !phone || !ig_handle || !occupation) {
+  if (!name || !email || !phone || !ig_handle) {
     return NextResponse.json({ error: "Please fill out all required fields." }, { status: 400 });
   }
 
@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       ig_handle,
-      occupation,
       referred_by: referred_by || null,
       status: "pending",
     },
