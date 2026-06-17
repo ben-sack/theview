@@ -30,7 +30,7 @@ export function Concept() {
           <p className="font-body text-cream/55 text-base md:text-lg leading-loose font-light max-w-xl">
             The crowd is curated. The nights are hard to forget.
           </p>
-          <p className="font-body text-cream/40 text-base leading-loose font-light max-w-xl">
+          <p className="font-body text-cream/40 text-sm leading-loose font-light max-w-xl">
             The View exists because there wasn't a version of this that felt right.
             Now there is.
           </p>
