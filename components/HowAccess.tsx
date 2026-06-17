@@ -41,7 +41,7 @@ export function HowAccess() {
             Gatherings are
           </p>
           <p className="font-display italic text-cream/40 text-lg">
-            recurring, unannounced, and kept small.
+            intentional, intimate, and by invitation.
           </p>
         </div>
 
