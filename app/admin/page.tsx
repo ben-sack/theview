@@ -348,11 +348,15 @@ function TextBlastTab() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent: number; failures: string[] } | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [optedOutCount, setOptedOutCount] = useState<number>(0);
 
   useEffect(() => {
     fetch("/api/admin/text-blast")
       .then((r) => r.json())
-      .then((d) => setMemberCount(d.memberCount ?? 0));
+      .then((d) => {
+        setMemberCount(d.memberCount ?? 0);
+        setOptedOutCount(d.optedOutCount ?? 0);
+      });
   }, []);
 
   const segments = getSegmentCount(message);
@@ -385,9 +389,16 @@ function TextBlastTab() {
       </div>
 
       {memberCount !== null && (
-        <div className="bg-white border border-tan/25 rounded-lg px-4 py-3 flex items-center gap-3">
-          <span className="text-2xl font-display text-espresso font-light">{memberCount}</span>
-          <span className="font-body text-sm text-tan">{memberCount === 1 ? "member" : "members"} will receive this message</span>
+        <div className="bg-white border border-tan/25 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-display text-espresso font-light">{memberCount}</span>
+            <span className="font-body text-sm text-tan">{memberCount === 1 ? "member" : "members"} will receive this message</span>
+          </div>
+          {optedOutCount > 0 && (
+            <span className="font-body text-xs text-tan bg-tan/10 px-3 py-1 rounded-full">
+              {optedOutCount} opted out
+            </span>
+          )}
         </div>
       )}
 

@@ -11,17 +11,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { count, error } = await supabase
+  const { count: totalCount, error: totalError } = await supabase
     .from("contacts")
     .select("id", { count: "exact", head: true })
     .eq("status", "approved")
     .not("phone", "is", null);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const { count: optedOutCount, error: optedOutError } = await supabase
+    .from("contacts")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "approved")
+    .eq("sms_opted_out", true)
+    .not("phone", "is", null);
+
+  if (totalError || optedOutError) {
+    return NextResponse.json({ error: "Failed to fetch counts." }, { status: 500 });
   }
 
-  return NextResponse.json({ memberCount: count ?? 0 });
+  const total = totalCount ?? 0;
+  const optedOut = optedOutCount ?? 0;
+
+  return NextResponse.json({ memberCount: total - optedOut, optedOutCount: optedOut });
 }
 
 export async function POST(req: NextRequest) {
@@ -36,8 +46,9 @@ export async function POST(req: NextRequest) {
 
   const { data: contacts, error } = await supabase
     .from("contacts")
-    .select("phone, name")
+    .select("id, phone, name")
     .eq("status", "approved")
+    .eq("sms_opted_out", false)
     .not("phone", "is", null);
 
   if (error) {
@@ -60,7 +71,14 @@ export async function POST(req: NextRequest) {
         to: contact.phone!,
       });
       sent++;
-    } catch {
+    } catch (err: unknown) {
+      const twilioErr = err as { code?: number };
+      if (twilioErr.code === 21610) {
+        await supabase
+          .from("contacts")
+          .update({ sms_opted_out: true })
+          .eq("id", contact.id);
+      }
       failures.push(contact.name);
     }
   }
