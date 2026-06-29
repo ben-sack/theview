@@ -10,7 +10,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api/unlock") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/keepalive")
+    pathname.startsWith("/api/keepalive") ||
+    pathname.startsWith("/confirmed")
   ) {
     return NextResponse.next();
   }

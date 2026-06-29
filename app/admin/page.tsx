@@ -14,7 +14,7 @@ type Contact = {
   created_at: string;
 };
 
-type Tab = "pending" | "approved" | "message" | "blast";
+type Tab = "pending" | "approved" | "message" | "blast" | "referrals";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -23,14 +23,23 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("pending");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
+    if (status === "message" || status === "blast" || status === "referrals") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
     const data = await res.json();
     setContacts(data.contacts ?? []);
     setLoading(false);
+  }, []);
+
+  const fetchPendingCount = useCallback(async () => {
+    const res = await fetch("/api/admin/contacts?status=pending");
+    if (!res.ok) return;
+    const data = await res.json();
+    setPendingCount((data.contacts ?? []).length);
   }, []);
 
   useEffect(() => {
@@ -40,7 +49,12 @@ export default function AdminPage() {
         setAuthed(true);
         return r.json();
       })
-      .then((data) => { if (data) setContacts(data.contacts ?? []); });
+      .then((data) => {
+        if (data) {
+          setContacts(data.contacts ?? []);
+          setPendingCount((data.contacts ?? []).length);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -65,23 +79,25 @@ export default function AdminPage() {
     setPassword("");
   }
 
-  async function updateStatus(id: string, status: "approved" | "rejected") {
+  async function updateStatus(id: string, status: "approved" | "rejected", reason?: string) {
     await fetch(`/api/admin/contacts/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, rejection_reason: reason }),
     });
     setContacts((prev) => prev.filter((c) => c.id !== id));
+    if (tab === "pending") setPendingCount((n) => Math.max(0, n - 1));
+    else fetchPendingCount();
   }
 
   function exportCSV() {
-    const headers = ["Name", "Email", "Phone", "Instagram", "Occupation", "Joined"];
+    const headers = ["Name", "Email", "Phone", "Instagram", "Referred By", "Joined"];
     const rows = contacts.map((c) => [
       c.name,
       c.email,
       c.phone ?? "",
       c.ig_handle ?? "",
-      c.occupation ?? "",
+      c.referred_by ?? "",
       new Date(c.created_at).toLocaleDateString(),
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
@@ -109,9 +125,7 @@ export default function AdminPage() {
           <a href="/" className="font-body text-xs tracking-widest uppercase text-tan hover:text-rust transition-colors mb-6 inline-block">
             The View
           </a>
-          <h1 className="font-display text-4xl text-espresso font-light mb-10">
-            Admin
-          </h1>
+          <h1 className="font-display text-4xl text-espresso font-light mb-10">Admin</h1>
           <form onSubmit={login} className="space-y-6">
             <div className="space-y-2">
               <label className="font-body text-xs tracking-widest uppercase text-tan font-medium">
@@ -126,9 +140,7 @@ export default function AdminPage() {
                 autoFocus
               />
             </div>
-            {loginError && (
-              <p className="text-sm text-rust font-body">{loginError}</p>
-            )}
+            {loginError && <p className="text-sm text-rust font-body">{loginError}</p>}
             <button
               type="submit"
               className="w-full bg-espresso text-ivory font-body text-sm tracking-widest uppercase py-3 rounded hover:bg-rust transition-colors duration-200"
@@ -141,18 +153,23 @@ export default function AdminPage() {
     );
   }
 
+  const TAB_LABELS: Record<Tab, string> = {
+    pending: "Pending",
+    approved: "Members",
+    message: "Welcome Message",
+    blast: "Text Blasts",
+    referrals: "Referrals",
+  };
+
   return (
     <div className="min-h-screen bg-ivory text-espresso">
-      {/* Header */}
       <header className="bg-espresso px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <a href="/" className="font-display text-xl text-ivory font-light tracking-wide hover:text-cream transition-colors">
             The View
           </a>
           <span className="text-tan text-sm">/</span>
-          <span className="font-body text-xs tracking-widest uppercase text-tan">
-            Admin
-          </span>
+          <span className="font-body text-xs tracking-widest uppercase text-tan">Admin</span>
         </div>
         <button
           onClick={logout}
@@ -162,26 +179,27 @@ export default function AdminPage() {
         </button>
       </header>
 
-      {/* Tabs */}
       <div className="bg-white border-b border-tan/20 px-8">
         <div className="flex gap-1">
-          {(["pending", "approved", "message", "blast"] as Tab[]).map((t) => (
+          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`font-body text-sm tracking-wide px-4 py-4 border-b-2 transition-colors duration-200 ${
-                tab === t
-                  ? "border-rust text-rust font-medium"
-                  : "border-transparent text-tan hover:text-espresso"
+              className={`relative font-body text-sm tracking-wide px-4 py-4 border-b-2 transition-colors duration-200 ${
+                tab === t ? "border-rust text-rust font-medium" : "border-transparent text-tan hover:text-espresso"
               }`}
             >
-              {t === "pending" ? "Pending" : t === "approved" ? "Members" : t === "message" ? "Welcome Message" : "Text Blasts"}
+              {TAB_LABELS[t]}
+              {t === "pending" && pendingCount > 0 && (
+                <span className="ml-2 bg-rust text-ivory text-[10px] font-body font-medium px-1.5 py-0.5 rounded-full">
+                  {pendingCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Content */}
       <main className="px-8 py-8">
         {loading ? (
           <p className="font-body text-sm text-tan animate-pulse">Loading…</p>
@@ -191,8 +209,10 @@ export default function AdminPage() {
           <MembersTab contacts={contacts} onExport={exportCSV} />
         ) : tab === "message" ? (
           <MessageTab />
-        ) : (
+        ) : tab === "blast" ? (
           <TextBlastTab />
+        ) : (
+          <ReferralsTab />
         )}
       </main>
     </div>
@@ -204,78 +224,261 @@ function PendingTab({
   onUpdate,
 }: {
   contacts: Contact[];
-  onUpdate: (id: string, status: "approved" | "rejected") => void;
+  onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
 }) {
   if (contacts.length === 0) {
-    return (
-      <p className="font-body text-base text-tan italic">No pending requests.</p>
-    );
+    return <p className="font-body text-base text-tan italic">No pending requests.</p>;
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {contacts.map((c) => (
-        <div
-          key={c.id}
-          className="bg-white border border-tan/25 rounded-lg p-5 flex flex-col gap-4 shadow-sm"
-        >
-          <div>
-            <p className="font-display text-2xl text-espresso font-light">{c.name}</p>
-            {c.occupation && (
-              <p className="font-body text-sm text-tan mt-0.5">{c.occupation}</p>
-            )}
-          </div>
+        <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
+      ))}
+    </div>
+  );
+}
 
-          <div className="space-y-2 font-body text-sm border-t border-tan/15 pt-3">
-            {c.email && (
-              <div className="flex gap-3 items-baseline">
-                <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Email</span>
-                <span className="text-espresso">{c.email}</span>
-              </div>
-            )}
-            {c.phone && (
-              <div className="flex gap-3 items-baseline">
-                <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Phone</span>
-                <span className="text-espresso">{c.phone}</span>
-              </div>
-            )}
-            {c.ig_handle && (
-              <div className="flex gap-3 items-baseline">
-                <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">IG</span>
-                <a
-                  href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber hover:text-rust transition-colors"
-                >
-                  {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
-                </a>
-              </div>
-            )}
-            {c.referred_by && (
-              <div className="flex gap-3 items-baseline">
-                <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Ref</span>
-                <span className="text-espresso">{c.referred_by}</span>
-              </div>
-            )}
-          </div>
+function PendingCard({
+  contact: c,
+  onUpdate,
+}: {
+  contact: Contact;
+  onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
+}) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
 
-          <div className="flex gap-3 mt-auto pt-1">
-            <button
-              onClick={() => onUpdate(c.id, "approved")}
-              className="flex-1 font-body text-sm font-medium py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+  return (
+    <div className="bg-white border border-tan/25 rounded-lg p-5 flex flex-col gap-4 shadow-sm">
+      <div>
+        <p className="font-display text-2xl text-espresso font-light">{c.name}</p>
+        {c.occupation && <p className="font-body text-sm text-tan mt-0.5">{c.occupation}</p>}
+      </div>
+
+      <div className="space-y-2 font-body text-sm border-t border-tan/15 pt-3">
+        {c.email && (
+          <div className="flex gap-3 items-baseline">
+            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Email</span>
+            <span className="text-espresso">{c.email}</span>
+          </div>
+        )}
+        {c.phone && (
+          <div className="flex gap-3 items-baseline">
+            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Phone</span>
+            <span className="text-espresso">{c.phone}</span>
+          </div>
+        )}
+        {c.ig_handle && (
+          <div className="flex gap-3 items-baseline">
+            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">IG</span>
+            <a
+              href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber hover:text-rust transition-colors"
             >
-              Approve
+              {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
+            </a>
+          </div>
+        )}
+        {c.referred_by && (
+          <div className="flex gap-3 items-baseline">
+            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Ref</span>
+            <span className="text-espresso">{c.referred_by}</span>
+          </div>
+        )}
+      </div>
+
+      {rejecting ? (
+        <div className="space-y-2 mt-auto pt-1">
+          <input
+            autoFocus
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason (optional)"
+            className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => onUpdate(c.id, "rejected", reason)}
+              className="flex-1 font-body text-sm font-medium py-2 bg-rust text-ivory rounded hover:bg-rust/80 transition-colors"
+            >
+              Confirm Reject
             </button>
             <button
-              onClick={() => onUpdate(c.id, "rejected")}
-              className="flex-1 font-body text-sm font-medium py-2.5 bg-white text-rust border border-rust/40 rounded hover:bg-rust/5 transition-colors duration-200"
+              onClick={() => { setRejecting(false); setReason(""); }}
+              className="font-body text-sm px-4 py-2 border border-tan/30 text-tan rounded hover:text-espresso transition-colors"
             >
-              Reject
+              Cancel
             </button>
           </div>
         </div>
-      ))}
+      ) : (
+        <div className="flex gap-3 mt-auto pt-1">
+          <button
+            onClick={() => onUpdate(c.id, "approved")}
+            className="flex-1 font-body text-sm font-medium py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+          >
+            Approve
+          </button>
+          <button
+            onClick={() => setRejecting(true)}
+            className="flex-1 font-body text-sm font-medium py-2.5 bg-white text-rust border border-rust/40 rounded hover:bg-rust/5 transition-colors duration-200"
+          >
+            Reject
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MembersTab({
+  contacts,
+  onExport,
+}: {
+  contacts: Contact[];
+  onExport: () => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = contacts.filter((c) => {
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      (c.phone ?? "").includes(q) ||
+      (c.ig_handle ?? "").toLowerCase().includes(q) ||
+      (c.referred_by ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone, Instagram…"
+          className="flex-1 max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+        />
+        <div className="flex items-center gap-4">
+          <p className="font-body text-sm text-tan whitespace-nowrap">
+            {filtered.length} of {contacts.length} {contacts.length === 1 ? "member" : "members"}
+          </p>
+          {contacts.length > 0 && (
+            <button
+              onClick={onExport}
+              className="font-body text-sm font-medium text-espresso border border-tan/40 hover:border-rust hover:text-rust px-4 py-2 rounded transition-all duration-200 whitespace-nowrap"
+            >
+              Export CSV
+            </button>
+          )}
+        </div>
+      </div>
+
+      {contacts.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No members yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No results for "{search}".</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-tan/20 bg-ivory">
+                {["Name", "Email", "Phone", "Instagram", "Referred By", "Joined"].map((h) => (
+                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="font-body text-sm font-medium text-espresso py-3 px-4">{c.name}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{c.email}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{c.phone ?? "—"}</td>
+                  <td className="font-body text-sm py-3 px-4">
+                    {c.ig_handle ? (
+                      <a
+                        href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber hover:text-rust transition-colors"
+                      >
+                        {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{c.referred_by ?? "—"}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">
+                    {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReferralsTab() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/contacts?status=pending")
+      .then((r) => r.json())
+      .then(async (pendingData) => {
+        const approvedRes = await fetch("/api/admin/contacts?status=approved");
+        const approvedData = await approvedRes.json();
+        const all = [...(pendingData.contacts ?? []), ...(approvedData.contacts ?? [])];
+        setContacts(all);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
+
+  const counts: Record<string, number> = {};
+  for (const c of contacts) {
+    if (!c.referred_by?.trim()) continue;
+    const key = c.referred_by.trim().toLowerCase();
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h2 className="font-display text-2xl text-espresso font-light mb-1">Referrals</h2>
+        <p className="font-body text-sm text-tan">Who's bringing people in, ranked by number of referrals.</p>
+      </div>
+
+      {sorted.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No referrals recorded yet.</p>
+      ) : (
+        <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
+          {sorted.map(([name, count], i) => (
+            <div key={name} className={`flex items-center justify-between px-5 py-4 ${i !== sorted.length - 1 ? "border-b border-tan/10" : ""}`}>
+              <div className="flex items-center gap-4">
+                <span className="font-body text-xs text-tan/50 w-5 text-right">{i + 1}</span>
+                <span className="font-body text-sm font-medium text-espresso capitalize">{name}</span>
+              </div>
+              <span className="font-body text-sm text-tan">
+                {count} {count === 1 ? "referral" : "referrals"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -421,9 +624,7 @@ function TextBlastTab() {
       {result && (
         <div className={`rounded-lg px-4 py-3 font-body text-sm ${result.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
           <p>Sent to {result.sent} {result.sent === 1 ? "member" : "members"}.</p>
-          {result.failures.length > 0 && (
-            <p className="mt-1">Failed: {result.failures.join(", ")}</p>
-          )}
+          {result.failures.length > 0 && <p className="mt-1">Failed: {result.failures.join(", ")}</p>}
         </div>
       )}
 
@@ -434,77 +635,6 @@ function TextBlastTab() {
       >
         {sending ? "Sending…" : "Send to All Members"}
       </button>
-    </div>
-  );
-}
-
-function MembersTab({
-  contacts,
-  onExport,
-}: {
-  contacts: Contact[];
-  onExport: () => void;
-}) {
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="font-body text-sm text-tan">
-          {contacts.length} {contacts.length === 1 ? "member" : "members"}
-        </p>
-        {contacts.length > 0 && (
-          <button
-            onClick={onExport}
-            className="font-body text-sm font-medium text-espresso border border-tan/40 hover:border-rust hover:text-rust px-4 py-2 rounded transition-all duration-200"
-          >
-            Export CSV
-          </button>
-        )}
-      </div>
-
-      {contacts.length === 0 ? (
-        <p className="font-body text-base text-tan italic">No members yet.</p>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Joined"].map((h) => (
-                  <th
-                    key={h}
-                    className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {contacts.map((c) => (
-                <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-sm font-medium text-espresso py-3 px-4">{c.name}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.email}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.phone ?? "—"}</td>
-                  <td className="font-body text-sm py-3 px-4">
-                    {c.ig_handle ? (
-                      <a
-                        href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-amber hover:text-rust transition-colors"
-                      >
-                        {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
-                      </a>
-                    ) : "—"}
-                  </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">
-                    {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

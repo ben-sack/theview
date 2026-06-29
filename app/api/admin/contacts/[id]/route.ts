@@ -40,7 +40,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { status } = await req.json();
+  const { status, rejection_reason } = await req.json();
 
   if (!["approved", "rejected"].includes(status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
@@ -56,9 +56,14 @@ export async function PATCH(
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
   }
 
+  const updateData: Record<string, string> = { status };
+  if (status === "rejected" && rejection_reason) {
+    updateData.rejection_reason = rejection_reason;
+  }
+
   const { error } = await supabase
     .from("contacts")
-    .update({ status })
+    .update(updateData)
     .eq("id", id);
 
   if (error) {

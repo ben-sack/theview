@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useInView } from "@/hooks/useInView";
 
 type FormState = {
@@ -13,6 +14,7 @@ type FormState = {
 export function AccessForm() {
   const { ref, inView } = useInView<HTMLElement>();
   const v = inView ? "in-view" : "";
+  const router = useRouter();
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -48,7 +50,7 @@ export function AccessForm() {
       return;
     }
 
-    setSubmitted(true);
+    router.push("/confirmed");
   }
 
   return (
