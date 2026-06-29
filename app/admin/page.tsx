@@ -15,7 +15,7 @@ type Contact = {
   created_at: string;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "message" | "blast" | "referrals";
+type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -27,7 +27,7 @@ export default function AdminPage() {
   const [pendingCount, setPendingCount] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected") return;
+    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -158,6 +158,7 @@ export default function AdminPage() {
     pending: "Pending",
     approved: "Members",
     rejected: "Rejected",
+    events: "Events",
     message: "Welcome Message",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -213,6 +214,8 @@ export default function AdminPage() {
           <MessageTab />
         ) : tab === "rejected" ? (
           <RejectedTab />
+        ) : tab === "events" ? (
+          <EventsTab />
         ) : tab === "blast" ? (
           <TextBlastTab />
         ) : (
@@ -513,6 +516,191 @@ function RejectedTab() {
                   </td>
                   <td className="font-body text-sm text-tan py-3 px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type AdminEvent = {
+  id: string;
+  title: string;
+  date: string;
+  capacity: number;
+  location: string | null;
+  partners: string | null;
+  allow_guests: boolean;
+  rsvp_count: number;
+};
+
+function EventsTab() {
+  const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [saving, setSaving] = useState(false);
+
+  function loadEvents() {
+    fetch("/api/admin/events")
+      .then((r) => r.json())
+      .then((d) => { setEvents(d.events ?? []); setLoading(false); });
+  }
+
+  useEffect(() => { loadEvents(); }, []);
+
+  async function addEvent(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await fetch("/api/admin/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, capacity: parseInt(form.capacity) }),
+    });
+    setForm({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+    setAdding(false);
+    setSaving(false);
+    loadEvents();
+  }
+
+  async function deleteEvent(id: string) {
+    setDeleting(id);
+    await fetch(`/api/admin/events/${id}`, { method: "DELETE" });
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    setDeleting(null);
+  }
+
+  if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl text-espresso font-light">Events</h2>
+        <button
+          onClick={() => setAdding((v) => !v)}
+          className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+        >
+          {adding ? "Cancel" : "+ Add Event"}
+        </button>
+      </div>
+
+      {adding && (
+        <form onSubmit={addEvent} className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+          <p className="font-body text-sm font-medium text-espresso">New Event</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Title *</label>
+              <input
+                required
+                value={form.title}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="Event name"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Date *</label>
+              <input
+                required
+                type="datetime-local"
+                value={form.date}
+                onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Capacity *</label>
+              <input
+                required
+                type="number"
+                min={1}
+                value={form.capacity}
+                onChange={(e) => setForm((p) => ({ ...p, capacity: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="100"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Location</label>
+              <input
+                value={form.location}
+                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="Venue name or address"
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Partner(s)</label>
+              <input
+                value={form.partners}
+                onChange={(e) => setForm((p) => ({ ...p, partners: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="Collaborator or brand names"
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.allow_guests}
+              onChange={(e) => setForm((p) => ({ ...p, allow_guests: e.target.checked }))}
+              className="w-4 h-4 accent-rust"
+            />
+            <span className="font-body text-sm text-espresso">Allow guests (+1 or +2)</span>
+          </label>
+          <button
+            type="submit"
+            disabled={saving}
+            className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+          >
+            {saving ? "Adding…" : "Add Event"}
+          </button>
+        </form>
+      )}
+
+      {events.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No events yet.</p>
+      ) : (
+        <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-tan/20 bg-ivory">
+                {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Guests", ""].map((h) => (
+                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((ev) => (
+                <tr key={ev.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="font-body text-sm font-medium py-3 px-4">
+                    <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">
+                      {ev.title}
+                    </a>
+                  </td>
+                  <td className="font-body text-sm text-tan py-3 px-4">
+                    {new Date(ev.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{ev.location ?? "—"}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{ev.partners ?? "—"}</td>
+                  <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{ev.allow_guests ? "Yes" : "No"}</td>
+                  <td className="py-3 px-4">
+                    <button
+                      onClick={() => deleteEvent(ev.id)}
+                      disabled={deleting === ev.id}
+                      className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40"
+                    >
+                      {deleting === ev.id ? "Deleting…" : "Delete"}
+                    </button>
                   </td>
                 </tr>
               ))}

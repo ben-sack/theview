@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useInView } from "@/hooks/useInView";
 
 type FormState = {
@@ -15,6 +15,7 @@ export function AccessForm() {
   const { ref, inView } = useInView<HTMLElement>();
   const v = inView ? "in-view" : "";
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -23,6 +24,11 @@ export function AccessForm() {
     ig_handle: "",
     referred_by: "",
   });
+
+  useEffect(() => {
+    const refParam = searchParams.get("ref");
+    if (refParam) setForm((prev) => ({ ...prev, referred_by: refParam }));
+  }, [searchParams]);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

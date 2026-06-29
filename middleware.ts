@@ -11,7 +11,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/keepalive") ||
-    pathname.startsWith("/confirmed")
+    pathname.startsWith("/confirmed") ||
+    pathname.startsWith("/rsvp") ||
+    pathname.startsWith("/api/rsvp")
   ) {
     return NextResponse.next();
   }
