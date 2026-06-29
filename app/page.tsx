@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
 import { Concept } from "@/components/Concept";
@@ -15,7 +16,9 @@ export default function Home() {
         <Concept />
         <Music />
 <HowAccess />
-        <AccessForm />
+        <Suspense>
+          <AccessForm />
+        </Suspense>
       </main>
       <Footer />
     </>
