@@ -13,7 +13,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api/keepalive") ||
     pathname.startsWith("/confirmed") ||
     pathname.startsWith("/rsvp") ||
-    pathname.startsWith("/api/rsvp")
+    pathname.startsWith("/api/rsvp") ||
+    pathname.startsWith("/door") ||
+    pathname.startsWith("/api/door")
   ) {
     return NextResponse.next();
   }
