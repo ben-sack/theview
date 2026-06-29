@@ -209,7 +209,7 @@ export default function AdminPage() {
         ) : tab === "pending" ? (
           <PendingTab contacts={contacts} onUpdate={updateStatus} />
         ) : tab === "approved" ? (
-          <MembersTab contacts={contacts} onExport={exportCSV} />
+          <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} />
         ) : tab === "message" ? (
           <MessageTab />
         ) : tab === "rejected" ? (
@@ -345,11 +345,22 @@ function PendingCard({
 function MembersTab({
   contacts,
   onExport,
+  onDelete,
 }: {
   contacts: Contact[];
   onExport: () => void;
+  onDelete: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Remove ${name} from the member list? This cannot be undone.`)) return;
+    setDeleting(id);
+    await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+    onDelete(id);
+    setDeleting(null);
+  }
 
   const filtered = contacts.filter((c) => {
     const q = search.toLowerCase();
@@ -396,7 +407,7 @@ function MembersTab({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Referred By", "Joined"].map((h) => (
+                {["Name", "Email", "Phone", "Instagram", "Referred By", "Joined", ""].map((h) => (
                   <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
                     {h}
                   </th>
@@ -424,6 +435,15 @@ function MembersTab({
                   <td className="font-body text-sm text-tan py-3 px-4">{c.referred_by ?? "—"}</td>
                   <td className="font-body text-sm text-tan py-3 px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="py-3 px-4">
+                    <button
+                      onClick={() => handleDelete(c.id, c.name)}
+                      disabled={deleting === c.id}
+                      className="font-body text-xs text-tan/50 hover:text-rust transition-colors disabled:opacity-40"
+                    >
+                      {deleting === c.id ? "…" : "Remove"}
+                    </button>
                   </td>
                 </tr>
               ))}
