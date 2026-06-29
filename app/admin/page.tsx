@@ -10,11 +10,12 @@ type Contact = {
   occupation: string | null;
   how_heard: string | null;
   referred_by: string | null;
+  rejection_reason: string | null;
   status: string;
   created_at: string;
 };
 
-type Tab = "pending" | "approved" | "message" | "blast" | "referrals";
+type Tab = "pending" | "approved" | "rejected" | "message" | "blast" | "referrals";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -26,7 +27,7 @@ export default function AdminPage() {
   const [pendingCount, setPendingCount] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "message" || status === "blast" || status === "referrals") return;
+    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -156,6 +157,7 @@ export default function AdminPage() {
   const TAB_LABELS: Record<Tab, string> = {
     pending: "Pending",
     approved: "Members",
+    rejected: "Rejected",
     message: "Welcome Message",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -209,6 +211,8 @@ export default function AdminPage() {
           <MembersTab contacts={contacts} onExport={exportCSV} />
         ) : tab === "message" ? (
           <MessageTab />
+        ) : tab === "rejected" ? (
+          <RejectedTab />
         ) : tab === "blast" ? (
           <TextBlastTab />
         ) : (
@@ -415,6 +419,98 @@ function MembersTab({
                     ) : "—"}
                   </td>
                   <td className="font-body text-sm text-tan py-3 px-4">{c.referred_by ?? "—"}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">
+                    {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RejectedTab() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/contacts?status=rejected")
+      .then((r) => r.json())
+      .then((d) => {
+        setContacts(d.contacts ?? []);
+        setLoading(false);
+      });
+  }, []);
+
+  const filtered = contacts.filter((c) => {
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      (c.phone ?? "").includes(q) ||
+      (c.ig_handle ?? "").toLowerCase().includes(q) ||
+      (c.rejection_reason ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone, reason…"
+          className="flex-1 max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+        />
+        <p className="font-body text-sm text-tan whitespace-nowrap">
+          {filtered.length} of {contacts.length} {contacts.length === 1 ? "person" : "people"}
+        </p>
+      </div>
+
+      {contacts.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No rejected requests.</p>
+      ) : filtered.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No results for "{search}".</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-tan/20 bg-ivory">
+                {["Name", "Email", "Phone", "Instagram", "Reason", "Date"].map((h) => (
+                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="font-body text-sm font-medium text-espresso py-3 px-4">{c.name}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{c.email}</td>
+                  <td className="font-body text-sm text-tan py-3 px-4">{c.phone ?? "—"}</td>
+                  <td className="font-body text-sm py-3 px-4">
+                    {c.ig_handle ? (
+                      <a
+                        href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber hover:text-rust transition-colors"
+                      >
+                        {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="font-body text-sm text-tan py-3 px-4 italic">
+                    {c.rejection_reason ?? <span className="not-italic text-tan/40">—</span>}
+                  </td>
                   <td className="font-body text-sm text-tan py-3 px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>

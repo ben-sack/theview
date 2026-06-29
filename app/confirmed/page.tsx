@@ -31,7 +31,7 @@ export default function ConfirmedPage() {
             Request Received
           </p>
           <h1 className="font-display text-3xl md:text-4xl text-ivory font-light leading-snug">
-            You're on the list.
+            Your request has been received.
           </h1>
           <p className="font-display italic text-cream/40 text-lg font-light leading-relaxed">
             We'll be in touch when the time is right.
