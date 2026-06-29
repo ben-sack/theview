@@ -50,6 +50,7 @@ export default function EventDetailPage() {
         const ev = d.event;
         const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
         setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} · ${eventDate}${ev.location ? ` · ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
+        setEventMessage(`Hey, just a reminder that doors open at 10pm this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot.`);
         setLoading(false);
       });
   }, [id, router]);
@@ -179,7 +180,7 @@ export default function EventDetailPage() {
               value={eventMessage}
               onChange={(e) => setEventMessage(e.target.value)}
               rows={5}
-              placeholder="Hey, just a reminder that doors open at 10pm this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot."
+              placeholder=""
               className="w-full bg-white border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
             />
             <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
