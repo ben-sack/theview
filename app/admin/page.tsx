@@ -14,7 +14,7 @@ type Contact = {
   created_at: string;
 };
 
-type Tab = "pending" | "approved";
+type Tab = "pending" | "approved" | "message";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -166,7 +166,7 @@ export default function AdminPage() {
       {/* Tabs */}
       <div className="border-b border-rust/10 px-8">
         <div className="flex gap-8">
-          {(["pending", "approved"] as Tab[]).map((t) => (
+          {(["pending", "approved", "message"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -176,7 +176,7 @@ export default function AdminPage() {
                   : "border-transparent text-tan/40 hover:text-tan/65"
               }`}
             >
-              {t === "pending" ? "Pending" : "Members"}
+              {t === "pending" ? "Pending" : t === "approved" ? "Members" : "Message"}
             </button>
           ))}
         </div>
@@ -190,8 +190,10 @@ export default function AdminPage() {
           </p>
         ) : tab === "pending" ? (
           <PendingTab contacts={contacts} onUpdate={updateStatus} />
-        ) : (
+        ) : tab === "approved" ? (
           <MembersTab contacts={contacts} onExport={exportCSV} />
+        ) : (
+          <MessageTab />
         )}
       </main>
     </div>
@@ -271,6 +273,66 @@ function PendingTab({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function MessageTab() {
+  const [template, setTemplate] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/sms-template")
+      .then((r) => r.json())
+      .then((d) => setTemplate(d.template ?? ""));
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    await fetch("/api/admin/sms-template", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ template }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <div className="max-w-xl space-y-8">
+      <div className="space-y-2">
+        <p className="font-body text-[9px] tracking-[0.3em] uppercase text-tan/50">
+          Approval SMS
+        </p>
+        <p className="font-body text-[12px] text-cream/40 leading-relaxed">
+          This message is sent automatically when you approve someone. Use{" "}
+          <span className="text-amber/60 font-mono">{"{name}"}</span> to
+          personalize it with their first name.
+        </p>
+      </div>
+
+      <div className="space-y-1">
+        <textarea
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          rows={7}
+          placeholder={`Hi {name}, you've been approved for The View. Here's what to expect…`}
+          className="w-full bg-crimson/30 border border-rust/20 rounded-sm px-4 py-3 font-body text-[13px] text-cream/80 placeholder-tan/25 focus:outline-none focus:border-amber/30 resize-none leading-relaxed"
+        />
+        <p className="font-body text-[9px] text-tan/30 tracking-widest">
+          {template.length} characters
+        </p>
+      </div>
+
+      <button
+        onClick={save}
+        disabled={saving}
+        className="font-body text-[9px] tracking-[0.3em] uppercase py-3 px-6 border border-amber/30 text-amber/70 hover:bg-amber/10 hover:text-amber hover:border-amber/50 transition-all duration-200 rounded-sm disabled:opacity-40"
+      >
+        {saving ? "Saving…" : saved ? "Saved" : "Save Message"}
+      </button>
     </div>
   );
 }
