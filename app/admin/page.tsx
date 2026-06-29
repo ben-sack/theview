@@ -14,7 +14,7 @@ type Contact = {
   created_at: string;
 };
 
-type Tab = "pending" | "approved" | "message";
+type Tab = "pending" | "approved" | "message" | "blast";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -166,7 +166,7 @@ export default function AdminPage() {
       {/* Tabs */}
       <div className="border-b border-rust/10 px-8">
         <div className="flex gap-8">
-          {(["pending", "approved", "message"] as Tab[]).map((t) => (
+          {(["pending", "approved", "message", "blast"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -176,7 +176,7 @@ export default function AdminPage() {
                   : "border-transparent text-tan/40 hover:text-tan/65"
               }`}
             >
-              {t === "pending" ? "Pending" : t === "approved" ? "Members" : "Message"}
+              {t === "pending" ? "Pending" : t === "approved" ? "Members" : t === "message" ? "Welcome Message" : "Text Blasts"}
             </button>
           ))}
         </div>
@@ -192,8 +192,10 @@ export default function AdminPage() {
           <PendingTab contacts={contacts} onUpdate={updateStatus} />
         ) : tab === "approved" ? (
           <MembersTab contacts={contacts} onExport={exportCSV} />
-        ) : (
+        ) : tab === "message" ? (
           <MessageTab />
+        ) : (
+          <TextBlastTab />
         )}
       </main>
     </div>
@@ -332,6 +334,100 @@ function MessageTab() {
         className="font-body text-[9px] tracking-[0.3em] uppercase py-3 px-6 border border-amber/30 text-amber/70 hover:bg-amber/10 hover:text-amber hover:border-amber/50 transition-all duration-200 rounded-sm disabled:opacity-40"
       >
         {saving ? "Saving…" : saved ? "Saved" : "Save Message"}
+      </button>
+    </div>
+  );
+}
+
+const TWILIO_PRICE_PER_SEGMENT = 0.0079;
+
+function getSegmentCount(text: string) {
+  if (text.length === 0) return 0;
+  return text.length <= 160 ? 1 : Math.ceil(text.length / 153);
+}
+
+function TextBlastTab() {
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/text-blast")
+      .then((r) => r.json())
+      .then((d) => setMemberCount(d.memberCount ?? 0));
+  }, []);
+
+  const segments = getSegmentCount(message);
+  const estimatedCost = memberCount !== null && segments > 0
+    ? (memberCount * segments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    : null;
+
+  async function send() {
+    if (!message.trim()) return;
+    setSending(true);
+    setResult(null);
+    const res = await fetch("/api/admin/text-blast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    setResult(data);
+    setSending(false);
+    if (data.sent > 0) setMessage("");
+  }
+
+  return (
+    <div className="max-w-xl space-y-8">
+      <div className="space-y-2">
+        <p className="font-body text-[9px] tracking-[0.3em] uppercase text-tan/50">
+          Text Blasts
+        </p>
+        <p className="font-body text-[12px] text-cream/40 leading-relaxed">
+          Send a message to all approved members at once. Use this for event announcements, updates, or anything you want to share with the full list.
+        </p>
+      </div>
+
+      <div className="space-y-1">
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={7}
+          placeholder="Hey, just wanted to let you know our next event is this Saturday…"
+          className="w-full bg-crimson/30 border border-rust/20 rounded-sm px-4 py-3 font-body text-[13px] text-cream/80 placeholder-tan/25 focus:outline-none focus:border-amber/30 resize-none leading-relaxed"
+        />
+        <div className="flex items-center justify-between">
+          <p className="font-body text-[9px] text-tan/30 tracking-widest">
+            {message.length} characters · {segments} {segments === 1 ? "segment" : "segments"}
+          </p>
+          {estimatedCost !== null && (
+            <p className="font-body text-[9px] text-tan/40 tracking-widest">
+              {memberCount} {memberCount === 1 ? "member" : "members"} · est. ${estimatedCost}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {result && (
+        <div className="space-y-1">
+          <p className="font-body text-[11px] text-amber/70">
+            Sent to {result.sent} {result.sent === 1 ? "member" : "members"}.
+          </p>
+          {result.failures.length > 0 && (
+            <p className="font-body text-[11px] text-rust/60">
+              Failed: {result.failures.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={send}
+        disabled={sending || !message.trim()}
+        className="font-body text-[9px] tracking-[0.3em] uppercase py-3 px-6 border border-amber/30 text-amber/70 hover:bg-amber/10 hover:text-amber hover:border-amber/50 transition-all duration-200 rounded-sm disabled:opacity-40"
+      >
+        {sending ? "Sending…" : "Send to All Members"}
       </button>
     </div>
   );
