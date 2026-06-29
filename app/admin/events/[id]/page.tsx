@@ -32,6 +32,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [blastTemplate, setBlastTemplate] = useState("");
   const [eventMessage, setEventMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[] } | null>(null);
@@ -46,6 +47,9 @@ export default function EventDetailPage() {
         if (!d) return;
         setEvent(d.event);
         setRsvps(d.rsvps ?? []);
+        const ev = d.event;
+        const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+        setBlastTemplate(`Hi {name}, you're invited to ${ev.title} on ${eventDate}${ev.location ? ` at ${ev.location}` : ""}. RSVP here: {rsvp_link}`);
         setLoading(false);
       });
   }, [id, router]);
@@ -68,7 +72,11 @@ export default function EventDetailPage() {
   async function sendBlast() {
     setBlasting(true);
     setBlastResult(null);
-    const res = await fetch(`/api/admin/events/${id}/blast`, { method: "POST" });
+    const res = await fetch(`/api/admin/events/${id}/blast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_template: blastTemplate }),
+    });
     const data = await res.json();
     setBlastResult(data);
     setBlasting(false);
@@ -125,15 +133,23 @@ export default function EventDetailPage() {
         </div>
 
         {/* Send RSVP blast */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={sendBlast}
-              disabled={blasting}
-              className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-            >
-              {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
-            </button>
+        <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+          <div>
+            <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
+            <p className="font-body text-xs text-tan mt-1">
+              Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
+              <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
+              <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <textarea
+              value={blastTemplate}
+              onChange={(e) => setBlastTemplate(e.target.value)}
+              rows={4}
+              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+            />
+            <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
           </div>
           {blastResult && (
             <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
@@ -141,6 +157,13 @@ export default function EventDetailPage() {
               {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
             </div>
           )}
+          <button
+            onClick={sendBlast}
+            disabled={blasting || !blastTemplate.trim()}
+            className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+          >
+            {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
+          </button>
         </div>
 
         {/* Event-specific text blast */}

@@ -15,6 +15,7 @@ export async function POST(
   }
 
   const { id } = await params;
+  const { message_template } = await req.json().catch(() => ({}));
 
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -43,6 +44,9 @@ export async function POST(
     day: "numeric",
   });
 
+  const defaultTemplate = `Hi {name}, you're invited to ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. RSVP here: {rsvp_link}`;
+  const template = message_template?.trim() || defaultTemplate;
+
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
     process.env.TWILIO_AUTH_TOKEN
@@ -54,7 +58,9 @@ export async function POST(
   for (const contact of contacts ?? []) {
     const firstName = contact.name.split(" ")[0];
     const rsvpLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://theview.la"}/rsvp/${id}?c=${contact.id}`;
-    const message = `Hi ${firstName}, you're invited to ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. RSVP here: ${rsvpLink}`;
+    const message = template
+      .replace(/\{name\}/gi, firstName)
+      .replace(/\{rsvp_link\}/gi, rsvpLink);
 
     try {
       await client.messages.create({
