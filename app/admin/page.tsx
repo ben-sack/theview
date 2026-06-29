@@ -320,7 +320,7 @@ function MessageTab() {
           onChange={(e) => setTemplate(e.target.value)}
           rows={8}
           placeholder={`Hi {name}, you've been approved for The View. Here's what to expect…`}
-          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
         />
         <p className="font-body text-xs text-tan">{template.length} characters</p>
       </div>
@@ -397,7 +397,7 @@ function TextBlastTab() {
           onChange={(e) => setMessage(e.target.value)}
           rows={7}
           placeholder="Hey, just wanted to let you know our next event is this Saturday…"
-          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
         />
         <div className="flex items-center justify-between font-body text-xs text-tan">
           <span>{message.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
