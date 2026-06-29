@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   for (const contact of contacts ?? []) {
     try {
       await client.messages.create({
-        body: message,
+        body: `${message}\n\nReply STOP to opt out`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone!,
       });

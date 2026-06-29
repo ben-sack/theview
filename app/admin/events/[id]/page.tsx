@@ -49,7 +49,7 @@ export default function EventDetailPage() {
         setRsvps(d.rsvps ?? []);
         const ev = d.event;
         const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-        setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} · ${eventDate}${ev.location ? ` · ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
+        setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
         setEventMessage(`Hey, just a reminder that doors open at 10pm this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot.`);
         setLoading(false);
       });

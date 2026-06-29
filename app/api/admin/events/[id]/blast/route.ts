@@ -44,7 +44,7 @@ export async function POST(
     day: "numeric",
   });
 
-  const defaultTemplate = `Hey {name}, the next one is happening. ${event.title} · ${eventDate}${event.location ? ` · ${event.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`;
+  const defaultTemplate = `Hey {name}, the next one is happening. ${event.title} - ${eventDate}${event.location ? ` - ${event.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`;
   const template = message_template?.trim() || defaultTemplate;
 
   const client = twilio(
@@ -58,9 +58,9 @@ export async function POST(
   for (const contact of contacts ?? []) {
     const firstName = contact.name.split(" ")[0];
     const rsvpLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://theview.la"}/rsvp/${id}?c=${contact.id}`;
-    const message = template
+    const message = `${template
       .replace(/\{name\}/gi, firstName)
-      .replace(/\{rsvp_link\}/gi, rsvpLink);
+      .replace(/\{rsvp_link\}/gi, rsvpLink)}\n\nReply STOP to opt out`;
 
     try {
       await client.messages.create({

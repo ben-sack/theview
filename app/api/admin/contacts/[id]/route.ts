@@ -17,7 +17,7 @@ async function sendApprovalSms(phone: string, name: string) {
   if (!template) return;
 
   const firstName = name.split(" ")[0];
-  const message = template.replace(/\{name\}/gi, firstName);
+  const message = `${template.replace(/\{name\}/gi, firstName)}\n\nReply STOP to opt out`;
 
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
