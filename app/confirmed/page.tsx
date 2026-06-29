@@ -27,9 +27,6 @@ export default function ConfirmedPage() {
         />
 
         <div className="space-y-4 max-w-sm">
-          <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">
-            Request Received
-          </p>
           <h1 className="font-display text-3xl md:text-4xl text-ivory font-light leading-snug">
             Your request has been received.
           </h1>
