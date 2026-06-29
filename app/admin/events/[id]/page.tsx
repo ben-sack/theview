@@ -147,7 +147,7 @@ export default function EventDetailPage() {
               value={blastTemplate}
               onChange={(e) => setBlastTemplate(e.target.value)}
               rows={4}
-              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+              className="w-full bg-white border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
             />
             <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
           </div>
@@ -180,7 +180,7 @@ export default function EventDetailPage() {
               onChange={(e) => setEventMessage(e.target.value)}
               rows={5}
               placeholder="Hey, just a reminder that doors open at 10pm this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot."
-              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+              className="w-full bg-white border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
             />
             <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
           </div>
