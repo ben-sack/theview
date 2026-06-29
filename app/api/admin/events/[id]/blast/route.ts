@@ -44,7 +44,7 @@ export async function POST(
     day: "numeric",
   });
 
-  const defaultTemplate = `Hi {name}, you're invited to ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. RSVP here: {rsvp_link}`;
+  const defaultTemplate = `Hey {name}, the next one is happening. ${event.title} · ${eventDate}${event.location ? ` · ${event.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`;
   const template = message_template?.trim() || defaultTemplate;
 
   const client = twilio(
