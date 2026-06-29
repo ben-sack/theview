@@ -357,8 +357,12 @@ function MembersTab({
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove ${name} from the member list? This cannot be undone.`)) return;
     setDeleting(id);
-    await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
-    onDelete(id);
+    const res = await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      onDelete(id);
+    } else {
+      alert("Failed to delete. Please try again.");
+    }
     setDeleting(null);
   }
 
