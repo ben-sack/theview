@@ -113,128 +113,126 @@ export default function EventDetailPage() {
         </div>
       </header>
 
-      <main className="px-8 py-8 space-y-8 max-w-4xl">
-        {/* Event info */}
-        <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="font-display text-3xl text-espresso font-light">{event.title}</h1>
-              <p className="font-body text-sm text-tan">{eventDate}</p>
-              {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
-              {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
+      <main className="px-8 py-8">
+        <div className="flex gap-8 items-start">
+          {/* Left column — controls */}
+          <div className="flex-1 min-w-0 space-y-8">
+            {/* Event info */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <h1 className="font-display text-3xl text-espresso font-light">{event.title}</h1>
+                  <p className="font-body text-sm text-tan">{eventDate}</p>
+                  {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
+                  {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-display text-4xl text-espresso font-light">{totalAttending}<span className="text-tan/50 text-2xl">/{event.capacity}</span></p>
+                  <p className="font-body text-xs text-tan tracking-widest uppercase">Attending</p>
+                </div>
+              </div>
+              {event.allow_guests && (
+                <p className="font-body text-xs text-tan/50 tracking-widest uppercase">Guests allowed</p>
+              )}
             </div>
-            <div className="text-right shrink-0">
-              <p className="font-display text-4xl text-espresso font-light">{totalAttending}<span className="text-tan/50 text-2xl">/{event.capacity}</span></p>
-              <p className="font-body text-xs text-tan tracking-widest uppercase">Attending</p>
+
+            {/* Send RSVP blast */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+              <div>
+                <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
+                <p className="font-body text-xs text-tan mt-1">
+                  Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
+                  <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
+                  <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <textarea
+                  value={blastTemplate}
+                  onChange={(e) => setBlastTemplate(e.target.value)}
+                  rows={4}
+                  className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+                />
+                <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
+              </div>
+              {blastResult && (
+                <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+                  <p>Sent to {blastResult.sent} members.</p>
+                  {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
+                </div>
+              )}
+              <button
+                onClick={sendBlast}
+                disabled={blasting || !blastTemplate.trim()}
+                className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+              >
+                {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
+              </button>
+            </div>
+
+            {/* Event-specific text blast */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+              <div>
+                <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
+                <p className="font-body text-xs text-tan mt-1">
+                  Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <textarea
+                  value={eventMessage}
+                  onChange={(e) => setEventMessage(e.target.value)}
+                  rows={5}
+                  placeholder=""
+                  className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+                />
+                <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
+              </div>
+              {messageResult && (
+                <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+                  <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
+                  {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
+                </div>
+              )}
+              <button
+                onClick={sendEventMessage}
+                disabled={sendingMessage || !eventMessage.trim()}
+                className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+              >
+                {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+              </button>
             </div>
           </div>
-          {event.allow_guests && (
-            <p className="font-body text-xs text-tan/50 tracking-widest uppercase">Guests allowed</p>
-          )}
-        </div>
 
-        {/* Send RSVP blast */}
-        <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
-          <div>
-            <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
-            <p className="font-body text-xs text-tan mt-1">
-              Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
-              <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
-              <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <textarea
-              value={blastTemplate}
-              onChange={(e) => setBlastTemplate(e.target.value)}
-              rows={4}
-              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
-            />
-            <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
-          </div>
-          {blastResult && (
-            <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-              <p>Sent to {blastResult.sent} members.</p>
-              {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
-            </div>
-          )}
-          <button
-            onClick={sendBlast}
-            disabled={blasting || !blastTemplate.trim()}
-            className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-          >
-            {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
-          </button>
-        </div>
-
-        {/* Event-specific text blast */}
-        <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
-          <div>
-            <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
-            <p className="font-body text-xs text-tan mt-1">
-              Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <textarea
-              value={eventMessage}
-              onChange={(e) => setEventMessage(e.target.value)}
-              rows={5}
-              placeholder=""
-              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
-            />
-            <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
-          </div>
-          {messageResult && (
-            <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-              <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
-              {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
-            </div>
-          )}
-          <button
-            onClick={sendEventMessage}
-            disabled={sendingMessage || !eventMessage.trim()}
-            className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-          >
-            {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
-          </button>
-        </div>
-
-        {/* RSVP list */}
-        <div className="space-y-4">
-          <p className="font-body text-sm text-tan">{rsvps.length} {rsvps.length === 1 ? "RSVP" : "RSVPs"}</p>
-
-          {rsvps.length === 0 ? (
-            <p className="font-body text-base text-tan italic">No RSVPs yet. Send the blast to invite members.</p>
-          ) : (
+          {/* Right column — RSVP list */}
+          <div className="w-80 shrink-0 sticky top-8">
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-tan/20 bg-ivory">
-                    {["Name", "Email", "Phone", "Instagram", "Party Size", "RSVP'd"].map((h) => (
-                      <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">
+                <p className="font-body text-sm font-medium text-espresso">Guest List</p>
+                <span className="font-body text-xs text-tan">{totalAttending} / {event.capacity}</span>
+              </div>
+              {rsvps.length === 0 ? (
+                <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
+              ) : (
+                <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
                   {rsvps.map((r) => (
-                    <tr key={r.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                      <td className="font-body text-sm font-medium text-espresso py-3 px-4">{r.contacts.name}</td>
-                      <td className="font-body text-sm text-tan py-3 px-4">{r.contacts.email}</td>
-                      <td className="font-body text-sm text-tan py-3 px-4">{r.contacts.phone ?? "—"}</td>
-                      <td className="font-body text-sm text-tan py-3 px-4">{r.contacts.ig_handle ?? "—"}</td>
-                      <td className="font-body text-sm text-tan py-3 px-4">{r.party_size}</td>
-                      <td className="font-body text-sm text-tan py-3 px-4">
+                    <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
+                        {r.party_size > 1 && (
+                          <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
+                        )}
+                      </div>
+                      <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
+                      <p className="font-body text-xs text-tan/50 mt-0.5">
                         {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </td>
-                    </tr>
+                      </p>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
     </div>
