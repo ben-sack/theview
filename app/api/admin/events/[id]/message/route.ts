@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import twilio from "twilio";
+
+function isAuthed(req: NextRequest) {
+  return req.cookies.get("admin_auth")?.value === "true";
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAuthed(req)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const { message } = await req.json();
+
+  if (!message?.trim()) {
+    return NextResponse.json({ error: "Message is required." }, { status: 400 });
+  }
+
+  const { data: rsvps, error } = await supabase
+    .from("rsvps")
+    .select("contacts(id, name, phone, sms_opted_out)")
+    .eq("event_id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const client = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+
+  let sent = 0;
+  const failures: string[] = [];
+
+  for (const rsvp of rsvps ?? []) {
+    const contact = (Array.isArray(rsvp.contacts) ? rsvp.contacts[0] : rsvp.contacts) as { id: string; name: string; phone: string | null; sms_opted_out: boolean } | null;
+    if (!contact?.phone || contact.sms_opted_out) continue;
+
+    try {
+      await client.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: contact.phone,
+      });
+      sent++;
+    } catch (err: unknown) {
+      const twilioErr = err as { code?: number };
+      if (twilioErr.code === 21610) {
+        await supabase.from("contacts").update({ sms_opted_out: true }).eq("id", contact.id);
+      }
+      failures.push(contact.name);
+    }
+  }
+
+  return NextResponse.json({ sent, failures });
+}

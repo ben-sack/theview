@@ -32,6 +32,9 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [eventMessage, setEventMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[] } | null>(null);
 
   useEffect(() => {
     fetch(`/api/admin/events/${id}`)
@@ -46,6 +49,21 @@ export default function EventDetailPage() {
         setLoading(false);
       });
   }, [id, router]);
+
+  async function sendEventMessage() {
+    if (!eventMessage.trim()) return;
+    setSendingMessage(true);
+    setMessageResult(null);
+    const res = await fetch(`/api/admin/events/${id}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: eventMessage }),
+    });
+    const data = await res.json();
+    setMessageResult(data);
+    setSendingMessage(false);
+    if (data.sent > 0) setEventMessage("");
+  }
 
   async function sendBlast() {
     setBlasting(true);
@@ -123,6 +141,39 @@ export default function EventDetailPage() {
               {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
             </div>
           )}
+        </div>
+
+        {/* Event-specific text blast */}
+        <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+          <div>
+            <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
+            <p className="font-body text-xs text-tan mt-1">
+              Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <textarea
+              value={eventMessage}
+              onChange={(e) => setEventMessage(e.target.value)}
+              rows={5}
+              placeholder="Hey, just a reminder that the event is this Saturday at 10pm…"
+              className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+            />
+            <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
+          </div>
+          {messageResult && (
+            <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+              <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
+              {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
+            </div>
+          )}
+          <button
+            onClick={sendEventMessage}
+            disabled={sendingMessage || !eventMessage.trim()}
+            className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+          >
+            {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+          </button>
         </div>
 
         {/* RSVP list */}
