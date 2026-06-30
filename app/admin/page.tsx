@@ -666,6 +666,9 @@ function EventsTab() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
   const [saving, setSaving] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [editSaving, setEditSaving] = useState(false);
 
   function loadEvents() {
     fetch("/api/admin/events")
@@ -696,10 +699,128 @@ function EventsTab() {
     setDeleting(null);
   }
 
+  function openEdit(ev: AdminEvent) {
+    const localDate = new Date(ev.date);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const localIso = `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}T${pad(localDate.getHours())}:${pad(localDate.getMinutes())}`;
+    setEditForm({
+      title: ev.title,
+      date: localIso,
+      capacity: String(ev.capacity),
+      location: ev.location ?? "",
+      partners: ev.partners ?? "",
+      allow_guests: ev.allow_guests,
+    });
+    setEditingEvent(ev);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingEvent) return;
+    setEditSaving(true);
+    await fetch(`/api/admin/events/${editingEvent.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...editForm, capacity: parseInt(editForm.capacity) }),
+    });
+    setEditSaving(false);
+    setEditingEvent(null);
+    loadEvents();
+  }
+
   if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
 
   return (
     <div className="space-y-6">
+      {/* Edit modal */}
+      {editingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <p className="font-display text-xl text-espresso font-light">Edit Event</p>
+              <button onClick={() => setEditingEvent(null)} className="font-body text-xs text-tan hover:text-espresso transition-colors">Cancel</button>
+            </div>
+            <form onSubmit={saveEdit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1 md:col-span-2">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Title *</label>
+                  <input
+                    required
+                    value={editForm.title}
+                    onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Date *</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((p) => ({ ...p, date: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Capacity *</label>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    value={editForm.capacity}
+                    onChange={(e) => setEditForm((p) => ({ ...p, capacity: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Location</label>
+                  <input
+                    value={editForm.location}
+                    onChange={(e) => setEditForm((p) => ({ ...p, location: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                    placeholder="Venue name or address"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Partner(s)</label>
+                  <input
+                    value={editForm.partners}
+                    onChange={(e) => setEditForm((p) => ({ ...p, partners: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                    placeholder="Collaborator or brand names"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editForm.allow_guests}
+                  onChange={(e) => setEditForm((p) => ({ ...p, allow_guests: e.target.checked }))}
+                  className="w-4 h-4 accent-rust"
+                />
+                <span className="font-body text-sm text-espresso">Allow guests (+1 or +2)</span>
+              </label>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                >
+                  {editSaving ? "Saving…" : "Save Changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingEvent(null)}
+                  className="font-body text-sm px-4 py-2.5 border border-tan/30 text-tan rounded hover:text-espresso transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl text-espresso font-light">Events</h2>
         <button
@@ -795,7 +916,7 @@ function EventsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory">
-                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", isPast ? "Checked In" : "Guests", ""].map((h) => (
+                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
                     <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -814,6 +935,11 @@ function EventsTab() {
                     <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
                     <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
                     <td className="font-body text-sm text-tan py-3 px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
+                    <td className="py-3 px-4">
+                      <button onClick={() => openEdit(ev)} className="font-body text-xs text-tan/50 hover:text-espresso transition-colors">
+                        Edit
+                      </button>
+                    </td>
                     <td className="py-3 px-4">
                       <button onClick={() => deleteEvent(ev.id)} disabled={deleting === ev.id} className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40">
                         {deleting === ev.id ? "Deleting…" : "Delete"}

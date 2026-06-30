@@ -48,6 +48,29 @@ export async function GET(
   return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [] });
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAuthed(req)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const { title, date, capacity, location, partners, allow_guests } = await req.json();
+
+  const { error } = await supabase
+    .from("events")
+    .update({ title, date, capacity, location, partners, allow_guests })
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
