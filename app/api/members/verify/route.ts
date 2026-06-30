@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   // Create session
   const token = randomUUID();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+  const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
 
   await supabase.from("member_sessions").insert({ contact_id: contact.id, token, expires_at: expiresAt });
   await supabase.from("member_otp").delete().eq("phone", e164);
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 365 * 24 * 60 * 60,
     path: "/",
   });
   return res;
