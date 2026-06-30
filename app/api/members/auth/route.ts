@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("SMS failed:", err);
-    return NextResponse.json({ error: "Failed to send code. Please try again." }, { status: 500 });
+    // Code is still saved — allow login via manual code lookup if SMS fails
   }
 
   return NextResponse.json({ success: true });
