@@ -16,7 +16,7 @@ type Contact = {
   created_at: string;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals";
+type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals" | "settings";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -176,6 +176,7 @@ export default function AdminPage() {
     message: "Welcome Message",
     blast: "Text Blasts",
     referrals: "Referrals",
+    settings: "Settings",
   };
 
   return (
@@ -232,8 +233,10 @@ export default function AdminPage() {
           <EventsTab />
         ) : tab === "blast" ? (
           <TextBlastTab />
-        ) : (
+        ) : tab === "referrals" ? (
           <ReferralsTab />
+        ) : (
+          <SettingsTab />
         )}
       </main>
     </div>
@@ -1188,6 +1191,61 @@ function TextBlastTab() {
       >
         {sending ? "Sending…" : "Send to All Members"}
       </button>
+    </div>
+  );
+}
+
+function SettingsTab() {
+  const [portalEnabled, setPortalEnabled] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((d) => setPortalEnabled(d.members_portal_enabled === "true"));
+  }, []);
+
+  async function togglePortal() {
+    if (portalEnabled === null) return;
+    setSaving(true);
+    const newVal = !portalEnabled;
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "members_portal_enabled", value: String(newVal) }),
+    });
+    setPortalEnabled(newVal);
+    setSaving(false);
+  }
+
+  return (
+    <div className="max-w-xl space-y-8">
+      <h2 className="font-display text-2xl text-espresso font-light">Settings</h2>
+
+      <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="font-body text-sm font-medium text-espresso">Member Portal</p>
+            <p className="font-body text-xs text-tan leading-relaxed">
+              When enabled, approved members can log in at{" "}
+              <span className="font-mono text-espresso">theview.la/members</span>{" "}
+              to see their RSVPs and share referral links. When disabled, the page shows a closed message.
+            </p>
+          </div>
+          <button
+            onClick={togglePortal}
+            disabled={saving || portalEnabled === null}
+            className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${portalEnabled ? "bg-espresso" : "bg-tan/30"}`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${portalEnabled ? "translate-x-6" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
+        <p className={`font-body text-xs font-medium ${portalEnabled ? "text-green-600" : "text-tan/50"}`}>
+          {portalEnabled === null ? "Loading…" : portalEnabled ? "Portal is live" : "Portal is off"}
+        </p>
+      </div>
     </div>
   );
 }
