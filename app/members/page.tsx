@@ -75,7 +75,19 @@ export default function MembersLoginPage() {
                 className="w-full bg-white/5 border border-tan/20 rounded px-4 py-3 font-body text-sm text-ivory placeholder-tan/30 focus:outline-none focus:border-tan/50 text-center tracking-widest"
               />
             </div>
-            {error && <p className="font-body text-xs text-rust">{error}</p>}
+            {error && (
+              <div className="space-y-2">
+                <p className="font-body text-xs text-rust">{error}</p>
+                {error.includes("request access") && (
+                  <a
+                    href="/#access"
+                    className="block font-body text-xs text-tan/50 hover:text-cream/70 underline underline-offset-2 transition-colors"
+                  >
+                    Request access →
+                  </a>
+                )}
+              </div>
+            )}
             <button
               type="submit"
               disabled={loading || !phone.trim()}
