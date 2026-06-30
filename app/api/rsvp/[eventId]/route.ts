@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params;
+  const contactId = req.nextUrl.searchParams.get("c");
 
   const { data: event, error } = await supabase
     .from("events")
@@ -17,12 +18,33 @@ export async function GET(
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
   }
 
-  const { count } = await supabase
+  const { count: rsvpCount } = await supabase
     .from("rsvps")
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId);
 
-  return NextResponse.json({ event, rsvp_count: count ?? 0 });
+  const { count: waitlistCount } = await supabase
+    .from("waitlist")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  let alreadyWaitlisted = false;
+  if (contactId) {
+    const { data: wl } = await supabase
+      .from("waitlist")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("contact_id", contactId)
+      .single();
+    alreadyWaitlisted = !!wl;
+  }
+
+  return NextResponse.json({
+    event,
+    rsvp_count: rsvpCount ?? 0,
+    waitlist_count: waitlistCount ?? 0,
+    already_waitlisted: alreadyWaitlisted,
+  });
 }
 
 export async function POST(
@@ -61,11 +83,15 @@ export async function POST(
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId);
 
-  if ((currentRsvps ?? 0) >= event.capacity) {
-    return NextResponse.json({ error: "This event is at capacity." }, { status: 409 });
-  }
-
   const size = event.allow_guests ? Math.min(Math.max(party_size ?? 1, 1), 3) : 1;
+
+  if ((currentRsvps ?? 0) >= event.capacity) {
+    const { error: wlError } = await supabase
+      .from("waitlist")
+      .upsert({ event_id: eventId, contact_id, party_size: size }, { onConflict: "event_id,contact_id" });
+    if (wlError) return NextResponse.json({ error: wlError.message }, { status: 500 });
+    return NextResponse.json({ waitlisted: true, name: contact.name });
+  }
 
   const { error } = await supabase
     .from("rsvps")

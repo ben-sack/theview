@@ -21,17 +21,20 @@ export default function RsvpPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [rsvpCount, setRsvpCount] = useState(0);
   const [partySize, setPartySize] = useState(1);
-  const [state, setState] = useState<"loading" | "ready" | "submitting" | "confirmed" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "submitting" | "confirmed" | "waitlisted" | "already_waitlisted" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
+  const [waitlistCount, setWaitlistCount] = useState(0);
 
   useEffect(() => {
-    fetch(`/api/rsvp/${eventId}`)
+    fetch(`/api/rsvp/${eventId}${contactId ? `?c=${contactId}` : ""}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) { setState("error"); setErrorMsg(d.error); return; }
         setEvent(d.event);
         setRsvpCount(d.rsvp_count);
-        setState("ready");
+        setWaitlistCount(d.waitlist_count ?? 0);
+        if (d.already_waitlisted) setState("already_waitlisted");
+        else setState("ready");
       })
       .catch(() => { setState("error"); setErrorMsg("Something went wrong."); });
   }, [eventId]);
@@ -46,7 +49,8 @@ export default function RsvpPage() {
     });
     const data = await res.json();
     if (!res.ok) { setState("error"); setErrorMsg(data.error); return; }
-    setState("confirmed");
+    if (data.waitlisted) setState("waitlisted");
+    else setState("confirmed");
   }
 
   const eventDate = event
@@ -96,7 +100,19 @@ export default function RsvpPage() {
             </div>
 
             {rsvpCount >= event.capacity ? (
-              <p className="font-display italic text-cream/40 text-lg">This event is at capacity.</p>
+              <div className="w-full space-y-4 text-center">
+                <p className="font-display italic text-cream/50 text-lg">This event is at capacity.</p>
+                <p className="font-body text-xs text-tan/50 leading-relaxed">
+                  {waitlistCount > 0 ? `${waitlistCount} ${waitlistCount === 1 ? "person is" : "people are"} already on the waitlist.` : "Be the first on the waitlist."}
+                </p>
+                <button
+                  onClick={confirmRsvp}
+                  disabled={state === "submitting"}
+                  className="w-full border border-tan/30 text-tan/70 hover:text-cream hover:border-tan/50 font-body text-sm font-medium tracking-widest uppercase py-4 rounded transition-colors duration-200 disabled:opacity-50"
+                >
+                  {state === "submitting" ? "Joining…" : "Join Waitlist"}
+                </button>
+              </div>
             ) : (
               <div className="w-full space-y-5">
                 {event.allow_guests && (
@@ -161,6 +177,26 @@ export default function RsvpPage() {
                 Copy Referral Link
               </button>
             </div>
+          </div>
+        )}
+
+        {state === "waitlisted" && (
+          <div className="space-y-3 text-center">
+            <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">Waitlist</p>
+            <h1 className="font-display text-3xl text-ivory font-light">You're on the list.</h1>
+            <p className="font-display italic text-cream/40 text-lg font-light">
+              We'll text you if a spot opens up.
+            </p>
+          </div>
+        )}
+
+        {state === "already_waitlisted" && (
+          <div className="space-y-3 text-center">
+            <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">Waitlist</p>
+            <h1 className="font-display text-3xl text-ivory font-light">You're already on the waitlist.</h1>
+            <p className="font-display italic text-cream/40 text-lg font-light">
+              We'll text you if a spot opens up.
+            </p>
           </div>
         )}
 

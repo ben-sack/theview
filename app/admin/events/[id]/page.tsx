@@ -25,11 +25,26 @@ type Rsvp = {
   };
 };
 
+type WaitlistEntry = {
+  id: string;
+  party_size: number;
+  created_at: string;
+  contacts: {
+    name: string;
+    email: string;
+    phone: string | null;
+    ig_handle: string | null;
+  };
+};
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [event, setEvent] = useState<Event | null>(null);
   const [rsvps, setRsvps] = useState<Rsvp[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[] } | null>(null);
@@ -48,6 +63,7 @@ export default function EventDetailPage() {
         if (!d) return;
         setEvent(d.event);
         setRsvps(d.rsvps ?? []);
+        setWaitlist(d.waitlist ?? []);
         const ev = d.event;
         const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
         setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
@@ -82,6 +98,23 @@ export default function EventDetailPage() {
     const data = await res.json();
     setBlastResult(data);
     setBlasting(false);
+  }
+
+  async function promoteFromWaitlist(waitlistId: string) {
+    setPromotingId(waitlistId);
+    const res = await fetch(`/api/admin/events/${id}/promote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ waitlist_id: waitlistId }),
+    });
+    if (res.ok) {
+      const promoted = waitlist.find((w) => w.id === waitlistId);
+      if (promoted) {
+        setWaitlist((prev) => prev.filter((w) => w.id !== waitlistId));
+        setRsvps((prev) => [...prev, { ...promoted, checked_in: false } as Rsvp]);
+      }
+    }
+    setPromotingId(null);
   }
 
   const totalAttending = rsvps.reduce((sum, r) => sum + r.party_size, 0);
@@ -218,32 +251,92 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {/* Right column — RSVP list */}
-          <div className="w-80 shrink-0 sticky top-8">
+          {/* Right column — RSVP list + waitlist */}
+          <div className="w-80 shrink-0 sticky top-8 space-y-4">
+            {/* Guest list */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">
-                <p className="font-body text-sm font-medium text-espresso">Guest List</p>
-                <span className="font-body text-xs text-tan">{totalAttending} / {event.capacity}</span>
-              </div>
-              {rsvps.length === 0 ? (
-                <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
-              ) : (
-                <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
-                  {rsvps.map((r) => (
-                    <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
-                        {r.party_size > 1 && (
-                          <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
-                        )}
-                      </div>
-                      <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
-                      <p className="font-body text-xs text-tan/50 mt-0.5">
-                        {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </p>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowWaitlist(false)}
+                    className={`font-body text-sm font-medium transition-colors ${!showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
+                  >
+                    Guest List
+                  </button>
+                  {waitlist.length > 0 && (
+                    <>
+                      <span className="text-tan/30">|</span>
+                      <button
+                        onClick={() => setShowWaitlist(true)}
+                        className={`font-body text-sm font-medium transition-colors ${showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
+                      >
+                        Waitlist
+                        <span className={`ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-body ${showWaitlist ? "bg-rust text-ivory" : "bg-tan/20 text-espresso"}`}>
+                          {waitlist.length}
+                        </span>
+                      </button>
+                    </>
+                  )}
                 </div>
+                <span className="font-body text-xs text-tan">
+                  {showWaitlist ? `${waitlist.length} waiting` : `${totalAttending} / ${event.capacity}`}
+                </span>
+              </div>
+
+              {!showWaitlist ? (
+                rsvps.length === 0 ? (
+                  <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
+                ) : (
+                  <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+                    {rsvps.map((r) => (
+                      <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
+                          {r.party_size > 1 && (
+                            <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
+                          )}
+                        </div>
+                        <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
+                        <p className="font-body text-xs text-tan/50 mt-0.5">
+                          {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                waitlist.length === 0 ? (
+                  <p className="font-body text-sm text-tan italic px-5 py-6 text-center">Waitlist is empty.</p>
+                ) : (
+                  <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+                    {waitlist.map((w, i) => (
+                      <div key={w.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-body text-xs text-tan/50 shrink-0">#{i + 1}</span>
+                              <p className="font-body text-sm font-medium text-espresso truncate">{w.contacts.name}</p>
+                              {w.party_size > 1 && (
+                                <span className="font-body text-xs text-tan shrink-0">+{w.party_size - 1}</span>
+                              )}
+                            </div>
+                            <p className="font-body text-xs text-tan truncate">{w.contacts.ig_handle ?? w.contacts.email}</p>
+                            <p className="font-body text-xs text-tan/50 mt-0.5">
+                              Joined {new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => promoteFromWaitlist(w.id)}
+                            disabled={promotingId === w.id}
+                            className="shrink-0 font-body text-xs px-2.5 py-1 bg-espresso text-ivory rounded hover:bg-rust transition-colors disabled:opacity-50 mt-0.5"
+                          >
+                            {promotingId === w.id ? "…" : "Admit"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>

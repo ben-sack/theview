@@ -35,7 +35,17 @@ export async function GET(
     return NextResponse.json({ error: rsvpError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [] });
+  const { data: waitlist, error: wlError } = await supabase
+    .from("waitlist")
+    .select("*, contacts(name, email, phone, ig_handle)")
+    .eq("event_id", id)
+    .order("created_at", { ascending: true });
+
+  if (wlError) {
+    return NextResponse.json({ error: wlError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [] });
 }
 
 export async function DELETE(
