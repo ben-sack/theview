@@ -15,6 +15,7 @@ type Event = {
 type Rsvp = {
   id: string;
   party_size: number;
+  checked_in: boolean;
   created_at: string;
   contacts: {
     name: string;
@@ -84,6 +85,9 @@ export default function EventDetailPage() {
   }
 
   const totalAttending = rsvps.reduce((sum, r) => sum + r.party_size, 0);
+  const totalCheckedIn = rsvps.filter((r) => r.checked_in).reduce((sum, r) => sum + r.party_size, 0);
+  const capacityPct = event ? totalAttending / event.capacity : 0;
+  const capacityColor = capacityPct >= 1 ? "text-rust" : capacityPct >= 0.8 ? "text-amber" : "text-espresso";
   const eventDate = event
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : "";
@@ -126,9 +130,19 @@ export default function EventDetailPage() {
                   {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
                   {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-display text-4xl text-espresso font-light">{totalAttending}<span className="text-tan/50 text-2xl">/{event.capacity}</span></p>
-                  <p className="font-body text-xs text-tan tracking-widest uppercase">Attending</p>
+                <div className="text-right shrink-0 space-y-2">
+                  <div>
+                    <p className={`font-display text-4xl font-light ${capacityColor}`}>{totalAttending}<span className="text-tan/50 text-2xl">/{event.capacity}</span></p>
+                    <p className="font-body text-xs text-tan tracking-widest uppercase">
+                      {capacityPct >= 1 ? "Full" : capacityPct >= 0.8 ? "Nearly Full" : "Attending"}
+                    </p>
+                  </div>
+                  {totalCheckedIn > 0 && (
+                    <div>
+                      <p className="font-display text-2xl text-green-600 font-light">{totalCheckedIn}</p>
+                      <p className="font-body text-xs text-tan tracking-widest uppercase">Checked In ({totalAttending > 0 ? Math.round((totalCheckedIn / totalAttending) * 100) : 0}%)</p>
+                    </div>
+                  )}
                 </div>
               </div>
               {event.allow_guests && (

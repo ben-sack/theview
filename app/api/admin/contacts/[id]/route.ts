@@ -40,7 +40,15 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { status, rejection_reason } = await req.json();
+  const body = await req.json();
+  const { status, rejection_reason, notes } = body;
+
+  // Notes-only update
+  if (notes !== undefined && !status) {
+    const { error } = await supabase.from("contacts").update({ notes }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
 
   if (!["approved", "rejected"].includes(status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });

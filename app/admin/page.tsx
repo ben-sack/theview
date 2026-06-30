@@ -11,6 +11,7 @@ type Contact = {
   how_heard: string | null;
   referred_by: string | null;
   rejection_reason: string | null;
+  notes: string | null;
   status: string;
   created_at: string;
 };
@@ -89,6 +90,19 @@ export default function AdminPage() {
     setContacts((prev) => prev.filter((c) => c.id !== id));
     if (tab === "pending") setPendingCount((n) => Math.max(0, n - 1));
     else fetchPendingCount();
+  }
+
+  async function approveAll() {
+    if (!confirm(`Approve all ${contacts.length} pending requests? This will send a welcome text to each person.`)) return;
+    for (const c of contacts) {
+      await fetch(`/api/admin/contacts/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      });
+    }
+    setContacts([]);
+    setPendingCount(0);
   }
 
   function exportCSV() {
@@ -207,7 +221,7 @@ export default function AdminPage() {
         {loading ? (
           <p className="font-body text-sm text-tan animate-pulse">Loading…</p>
         ) : tab === "pending" ? (
-          <PendingTab contacts={contacts} onUpdate={updateStatus} />
+          <PendingTab contacts={contacts} onUpdate={updateStatus} onApproveAll={approveAll} />
         ) : tab === "approved" ? (
           <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} />
         ) : tab === "message" ? (
@@ -229,19 +243,33 @@ export default function AdminPage() {
 function PendingTab({
   contacts,
   onUpdate,
+  onApproveAll,
 }: {
   contacts: Contact[];
   onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
+  onApproveAll: () => void;
 }) {
   if (contacts.length === 0) {
     return <p className="font-body text-base text-tan italic">No pending requests.</p>;
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {contacts.map((c) => (
-        <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
-      ))}
+    <div className="space-y-5">
+      {contacts.length > 1 && (
+        <div className="flex justify-end">
+          <button
+            onClick={onApproveAll}
+            className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+          >
+            Approve All ({contacts.length})
+          </button>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {contacts.map((c) => (
+          <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -353,6 +381,24 @@ function MembersTab({
 }) {
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [savingNote, setSavingNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initial: Record<string, string> = {};
+    contacts.forEach((c) => { initial[c.id] = c.notes ?? ""; });
+    setNotes(initial);
+  }, [contacts]);
+
+  async function saveNote(id: string) {
+    setSavingNote(id);
+    await fetch(`/api/admin/contacts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: notes[id] ?? "" }),
+    });
+    setSavingNote(null);
+  }
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove ${name} from the member list? This cannot be undone.`)) return;
@@ -411,7 +457,7 @@ function MembersTab({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Referred By", "Joined", ""].map((h) => (
+                {["Name", "Email", "Phone", "Instagram", "Referred By", "Notes", "Joined", ""].map((h) => (
                   <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
                     {h}
                   </th>
@@ -437,6 +483,16 @@ function MembersTab({
                     ) : "—"}
                   </td>
                   <td className="font-body text-sm text-tan py-3 px-4">{c.referred_by ?? "—"}</td>
+                  <td className="py-3 px-4 min-w-[180px]">
+                    <input
+                      type="text"
+                      value={notes[c.id] ?? ""}
+                      onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      onBlur={() => saveNote(c.id)}
+                      placeholder="Add note…"
+                      className={`w-full bg-transparent border-b font-body text-xs text-espresso placeholder-tan/30 focus:outline-none py-1 transition-colors ${savingNote === c.id ? "border-tan/20" : "border-transparent hover:border-tan/20 focus:border-rust"}`}
+                    />
+                  </td>
                   <td className="font-body text-sm text-tan py-3 px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
@@ -464,6 +520,7 @@ function RejectedTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove ${name}? This cannot be undone.`)) return;
@@ -472,6 +529,17 @@ function RejectedTab() {
     if (res.ok) setContacts((prev) => prev.filter((c) => c.id !== id));
     else alert("Failed to delete. Please try again.");
     setDeleting(null);
+  }
+
+  async function handleApprove(id: string) {
+    setApproving(id);
+    await fetch(`/api/admin/contacts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    setContacts((prev) => prev.filter((c) => c.id !== id));
+    setApproving(null);
   }
 
   useEffect(() => {
@@ -520,7 +588,7 @@ function RejectedTab() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Reason", "Date", ""].map((h) => (
+                {["Name", "Email", "Phone", "Instagram", "Reason", "Date", "", ""].map((h) => (
                   <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
                     {h}
                   </th>
@@ -553,6 +621,15 @@ function RejectedTab() {
                   </td>
                   <td className="py-3 px-4">
                     <button
+                      onClick={() => handleApprove(c.id)}
+                      disabled={approving === c.id}
+                      className="font-body text-xs text-tan/50 hover:text-espresso transition-colors disabled:opacity-40 whitespace-nowrap"
+                    >
+                      {approving === c.id ? "…" : "Approve"}
+                    </button>
+                  </td>
+                  <td className="py-3 px-4">
+                    <button
                       onClick={() => handleDelete(c.id, c.name)}
                       disabled={deleting === c.id}
                       className="font-body text-xs text-tan/50 hover:text-rust transition-colors disabled:opacity-40"
@@ -579,6 +656,7 @@ type AdminEvent = {
   partners: string | null;
   allow_guests: boolean;
   rsvp_count: number;
+  checked_in_count: number;
 };
 
 function EventsTab() {
@@ -708,49 +786,62 @@ function EventsTab() {
 
       {events.length === 0 ? (
         <p className="font-body text-base text-tan italic">No events yet.</p>
-      ) : (
-        <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-tan/20 bg-ivory">
-                {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Guests", ""].map((h) => (
-                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((ev) => (
-                <tr key={ev.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-sm font-medium py-3 px-4">
-                    <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">
-                      {ev.title}
-                    </a>
-                  </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">
-                    {new Date(ev.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{ev.location ?? "—"}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{ev.partners ?? "—"}</td>
-                  <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{ev.allow_guests ? "Yes" : "No"}</td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => deleteEvent(ev.id)}
-                      disabled={deleting === ev.id}
-                      className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40"
-                    >
-                      {deleting === ev.id ? "Deleting…" : "Delete"}
-                    </button>
-                  </td>
+      ) : (() => {
+        const now = new Date();
+        const upcoming = events.filter((ev) => new Date(ev.date) >= now);
+        const past = events.filter((ev) => new Date(ev.date) < now);
+        const EventTable = ({ rows, isPast }: { rows: AdminEvent[]; isPast: boolean }) => (
+          <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-tan/20 bg-ivory">
+                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", isPast ? "Checked In" : "Guests", ""].map((h) => (
+                    <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {rows.map((ev) => (
+                  <tr key={ev.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
+                    <td className="font-body text-sm font-medium py-3 px-4">
+                      <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">{ev.title}</a>
+                    </td>
+                    <td className="font-body text-sm text-tan py-3 px-4">
+                      {new Date(ev.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td className="font-body text-sm text-tan py-3 px-4">{ev.location ?? "—"}</td>
+                    <td className="font-body text-sm text-tan py-3 px-4">{ev.partners ?? "—"}</td>
+                    <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
+                    <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
+                    <td className="font-body text-sm text-tan py-3 px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
+                    <td className="py-3 px-4">
+                      <button onClick={() => deleteEvent(ev.id)} disabled={deleting === ev.id} className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40">
+                        {deleting === ev.id ? "Deleting…" : "Delete"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        return (
+          <div className="space-y-8">
+            {upcoming.length > 0 && (
+              <div className="space-y-3">
+                <p className="font-body text-xs tracking-widest uppercase text-tan">Upcoming</p>
+                <EventTable rows={upcoming} isPast={false} />
+              </div>
+            )}
+            {past.length > 0 && (
+              <div className="space-y-3">
+                <p className="font-body text-xs tracking-widest uppercase text-tan">Past</p>
+                <EventTable rows={past} isPast={true} />
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -919,16 +1010,19 @@ function TextBlastTab() {
       </div>
 
       {memberCount !== null && (
-        <div className="bg-white border border-tan/25 rounded-lg px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-display text-espresso font-light">{memberCount}</span>
-            <span className="font-body text-sm text-tan">{memberCount === 1 ? "member" : "members"} will receive this message</span>
+        <div className="bg-white border border-tan/25 rounded-lg px-5 py-4 grid grid-cols-3 divide-x divide-tan/20">
+          <div className="pr-5">
+            <p className="font-display text-3xl text-espresso font-light">{memberCount + optedOutCount}</p>
+            <p className="font-body text-xs text-tan mt-0.5">Total approved</p>
           </div>
-          {optedOutCount > 0 && (
-            <span className="font-body text-xs text-tan bg-tan/10 px-3 py-1 rounded-full">
-              {optedOutCount} opted out
-            </span>
-          )}
+          <div className="px-5">
+            <p className="font-display text-3xl text-tan font-light">{optedOutCount}</p>
+            <p className="font-body text-xs text-tan mt-0.5">Opted out</p>
+          </div>
+          <div className="pl-5">
+            <p className="font-display text-3xl text-espresso font-light">{memberCount}</p>
+            <p className="font-body text-xs text-tan mt-0.5">Will receive</p>
+          </div>
         </div>
       )}
 
