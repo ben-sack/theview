@@ -23,6 +23,13 @@ export function Nav() {
       {/* Right: CTAs */}
       <nav className="flex items-center gap-5">
         <a
+          href="/members"
+          className="font-body text-[10px] tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+        >
+          Members
+        </a>
+        <span className="text-rust/30 text-xs">/</span>
+        <a
           href="#access"
           className="font-body text-[10px] tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
         >

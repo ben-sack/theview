@@ -30,7 +30,17 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!contact) {
-    return NextResponse.json({ error: "No approved member found with that number." }, { status: 404 });
+    // Check if they exist but are pending/rejected
+    const { data: anyContact } = await supabase
+      .from("contacts")
+      .select("status")
+      .eq("phone", e164)
+      .single();
+
+    if (anyContact?.status === "pending") {
+      return NextResponse.json({ error: "Your application is still under review. We'll reach out once you've been approved." }, { status: 403 });
+    }
+    return NextResponse.json({ error: "We don't have an approved membership on file for that number. If you haven't applied yet, request access on the main page." }, { status: 404 });
   }
 
   // Generate 6-digit code
