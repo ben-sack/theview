@@ -27,7 +27,15 @@ export function AccessForm() {
 
   useEffect(() => {
     const refParam = searchParams.get("ref");
-    if (refParam) setForm((prev) => ({ ...prev, referred_by: refParam }));
+    if (!refParam) return;
+    fetch(`/api/referrer?id=${refParam}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.name) setForm((prev) => ({ ...prev, referred_by: d.name }));
+      });
+    setTimeout(() => {
+      document.getElementById("access")?.scrollIntoView({ behavior: "smooth" });
+    }, 300);
   }, [searchParams]);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
