@@ -21,6 +21,17 @@ export async function POST(req: NextRequest) {
 
   const normalizedPhone = normalizePhone(phone);
 
+  const { data: existing } = await supabase
+    .from("contacts")
+    .select("id")
+    .or(`email.eq.${email},phone.eq.${normalizedPhone}`)
+    .limit(1)
+    .single();
+
+  if (existing) {
+    return NextResponse.json({ error: "We already have your information on file." }, { status: 409 });
+  }
+
   const { error } = await supabase.from("contacts").insert([
     {
       name,
