@@ -463,6 +463,16 @@ function RejectedTab() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Remove ${name}? This cannot be undone.`)) return;
+    setDeleting(id);
+    const res = await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+    if (res.ok) setContacts((prev) => prev.filter((c) => c.id !== id));
+    else alert("Failed to delete. Please try again.");
+    setDeleting(null);
+  }
 
   useEffect(() => {
     fetch("/api/admin/contacts?status=rejected")
@@ -510,7 +520,7 @@ function RejectedTab() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Reason", "Date"].map((h) => (
+                {["Name", "Email", "Phone", "Instagram", "Reason", "Date", ""].map((h) => (
                   <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
                     {h}
                   </th>
@@ -540,6 +550,15 @@ function RejectedTab() {
                   </td>
                   <td className="font-body text-sm text-tan py-3 px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="py-3 px-4">
+                    <button
+                      onClick={() => handleDelete(c.id, c.name)}
+                      disabled={deleting === c.id}
+                      className="font-body text-xs text-tan/50 hover:text-rust transition-colors disabled:opacity-40"
+                    >
+                      {deleting === c.id ? "…" : "Remove"}
+                    </button>
                   </td>
                 </tr>
               ))}
