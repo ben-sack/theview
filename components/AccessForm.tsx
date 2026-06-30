@@ -27,6 +27,14 @@ export function AccessForm() {
 
   useEffect(() => {
     const refParam = searchParams.get("ref");
+    const applyParam = searchParams.get("apply");
+
+    if (applyParam) {
+      setTimeout(() => {
+        document.getElementById("access")?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    }
+
     if (!refParam) return;
     fetch(`/api/referrer?id=${refParam}`)
       .then((r) => r.json())

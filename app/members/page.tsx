@@ -80,7 +80,7 @@ export default function MembersLoginPage() {
                 <p className="font-body text-xs text-rust">{error}</p>
                 {error.includes("request access") && (
                   <a
-                    href="/#access"
+                    href="/?apply=1"
                     className="block font-body text-xs text-tan/50 hover:text-cream/70 underline underline-offset-2 transition-colors"
                   >
                     Request access →
