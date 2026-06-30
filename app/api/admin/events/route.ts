@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data: events, error } = await supabase
     .from("events")
-    .select("*, rsvps(party_size, checked_in)")
+    .select("*, rsvps(party_size, checked_in), waitlist(id)")
     .order("date", { ascending: true });
 
   if (error) {
@@ -23,7 +23,9 @@ export async function GET(req: NextRequest) {
     ...e,
     rsvp_count: (e.rsvps ?? []).reduce((sum: number, r: { party_size: number }) => sum + r.party_size, 0),
     checked_in_count: (e.rsvps ?? []).filter((r: { checked_in: boolean }) => r.checked_in).reduce((sum: number, r: { party_size: number }) => sum + r.party_size, 0),
+    waitlist_count: (e.waitlist ?? []).length,
     rsvps: undefined,
+    waitlist: undefined,
   }));
 
   return NextResponse.json({ events: formatted });

@@ -657,6 +657,7 @@ type AdminEvent = {
   allow_guests: boolean;
   rsvp_count: number;
   checked_in_count: number;
+  waitlist_count: number;
 };
 
 function EventsTab() {
@@ -916,7 +917,7 @@ function EventsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory">
-                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
+                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
                     <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -934,6 +935,11 @@ function EventsTab() {
                     <td className="font-body text-sm text-tan py-3 px-4">{ev.partners ?? "—"}</td>
                     <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
                     <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
+                    <td className="font-body text-sm py-3 px-4">
+                      {ev.waitlist_count > 0
+                        ? <span className="text-amber font-medium">{ev.waitlist_count}</span>
+                        : <span className="text-tan/40">0</span>}
+                    </td>
                     <td className="font-body text-sm text-tan py-3 px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
                     <td className="py-3 px-4">
                       <button onClick={() => openEdit(ev)} className="font-body text-xs text-tan/50 hover:text-espresso transition-colors">
