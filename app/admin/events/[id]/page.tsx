@@ -137,42 +137,42 @@ export default function EventDetailPage() {
 
   return (
     <div className="min-h-screen bg-ivory text-espresso">
-      <header className="bg-espresso px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="bg-espresso px-4 sm:px-8 py-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button
             onClick={() => router.push("/admin")}
-            className="font-body text-xs tracking-widest uppercase text-tan hover:text-ivory transition-colors"
+            className="font-body text-xs tracking-widest uppercase text-tan hover:text-ivory transition-colors shrink-0"
           >
             ← Admin
           </button>
-          <span className="text-tan text-sm">/</span>
-          <span className="font-display text-lg text-ivory font-light">{event.title}</span>
+          <span className="text-tan text-sm shrink-0">/</span>
+          <span className="font-display text-base sm:text-lg text-ivory font-light truncate">{event.title}</span>
         </div>
       </header>
 
-      <main className="px-8 py-8">
-        <div className="flex gap-8 items-start">
+      <main className="px-4 sm:px-8 py-6 sm:py-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
           {/* Left column — controls */}
-          <div className="flex-1 min-w-0 space-y-8">
+          <div className="w-full flex-1 min-w-0 space-y-6 lg:space-y-8 order-2 lg:order-1">
             {/* Event info */}
-            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-3">
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <h1 className="font-display text-3xl text-espresso font-light">{event.title}</h1>
+                  <h1 className="font-display text-2xl sm:text-3xl text-espresso font-light">{event.title}</h1>
                   <p className="font-body text-sm text-tan">{eventDate}</p>
                   {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
                   {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
                 </div>
                 <div className="text-right shrink-0 space-y-2">
                   <div>
-                    <p className={`font-display text-4xl font-light ${capacityColor}`}>{totalAttending}<span className="text-tan/50 text-2xl">/{event.capacity}</span></p>
+                    <p className={`font-display text-2xl sm:text-4xl font-light ${capacityColor}`}>{totalAttending}<span className="text-tan/50 text-lg sm:text-2xl">/{event.capacity}</span></p>
                     <p className="font-body text-xs text-tan tracking-widest uppercase">
                       {capacityPct >= 1 ? "Full" : capacityPct >= 0.8 ? "Nearly Full" : "Attending"}
                     </p>
                   </div>
                   {totalCheckedIn > 0 && (
                     <div>
-                      <p className="font-display text-2xl text-green-600 font-light">{totalCheckedIn}</p>
+                      <p className="font-display text-lg sm:text-2xl text-green-600 font-light">{totalCheckedIn}</p>
                       <p className="font-body text-xs text-tan tracking-widest uppercase">Checked In ({totalAttending > 0 ? Math.round((totalCheckedIn / totalAttending) * 100) : 0}%)</p>
                     </div>
                   )}
@@ -184,7 +184,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Send RSVP blast */}
-            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
               <div>
                 <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
                 <p className="font-body text-xs text-tan mt-1">
@@ -218,7 +218,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Event-specific text blast */}
-            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-6 space-y-4">
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
               <div>
                 <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
                 <p className="font-body text-xs text-tan mt-1">
@@ -252,7 +252,7 @@ export default function EventDetailPage() {
           </div>
 
           {/* Right column — RSVP list + waitlist */}
-          <div className="w-80 shrink-0 sticky top-8 space-y-4">
+          <div className="w-full lg:w-80 shrink-0 lg:sticky lg:top-8 space-y-4 order-1 lg:order-2">
             {/* Guest list */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">

@@ -14,7 +14,7 @@ export function Hero() {
 
   return (
     <section
-      className="relative flex flex-col overflow-hidden bg-oxblood md:snap-start"
+      className="relative flex flex-col overflow-hidden bg-oxblood snap-start"
       style={{ minHeight: "100svh" }}
     >
       {/* Atmospheric warm glow */}

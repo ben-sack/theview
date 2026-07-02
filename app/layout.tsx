@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${inter.variable} ${pinyon.variable} md:snap-y md:snap-proximity`}>
+    <html lang="en" className={`${cormorant.variable} ${inter.variable} ${pinyon.variable}`}>
       <body>{children}</body>
     </html>
   );

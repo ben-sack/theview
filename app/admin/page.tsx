@@ -181,29 +181,29 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-ivory text-espresso">
-      <header className="bg-espresso px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <a href="/" className="font-display text-xl text-ivory font-light tracking-wide hover:text-cream transition-colors">
+      <header className="bg-espresso px-4 sm:px-8 py-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <a href="/" className="font-display text-lg sm:text-xl text-ivory font-light tracking-wide hover:text-cream transition-colors shrink-0">
             The View
           </a>
-          <span className="text-tan text-sm">/</span>
-          <span className="font-body text-xs tracking-widest uppercase text-tan">Admin</span>
+          <span className="text-tan text-sm shrink-0">/</span>
+          <span className="font-body text-xs tracking-widest uppercase text-tan truncate">Admin</span>
         </div>
         <button
           onClick={logout}
-          className="font-body text-xs tracking-widest uppercase text-tan hover:text-ivory transition-colors border border-tan/30 hover:border-tan px-4 py-2 rounded"
+          className="font-body text-xs tracking-widest uppercase text-tan hover:text-ivory transition-colors border border-tan/30 hover:border-tan px-3 sm:px-4 py-2 rounded shrink-0"
         >
           Sign out
         </button>
       </header>
 
-      <div className="bg-white border-b border-tan/20 px-8">
-        <div className="flex gap-1">
+      <div className="bg-white border-b border-tan/20 px-4 sm:px-8 overflow-x-auto">
+        <div className="flex gap-1 w-max">
           {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`relative font-body text-sm tracking-wide px-4 py-4 border-b-2 transition-colors duration-200 ${
+              className={`relative shrink-0 whitespace-nowrap font-body text-xs sm:text-sm tracking-wide px-3 py-3 sm:px-4 sm:py-4 border-b-2 transition-colors duration-200 ${
                 tab === t ? "border-rust text-rust font-medium" : "border-transparent text-tan hover:text-espresso"
               }`}
             >
@@ -218,7 +218,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <main className="px-8 py-8">
+      <main className="px-4 sm:px-8 py-6 sm:py-8">
         {loading ? (
           <p className="font-body text-sm text-tan animate-pulse">Loading…</p>
         ) : tab === "pending" ? (
@@ -290,7 +290,7 @@ function PendingCard({
   return (
     <div className="bg-white border border-tan/25 rounded-lg p-5 flex flex-col gap-4 shadow-sm">
       <div>
-        <p className="font-display text-2xl text-espresso font-light">{c.name}</p>
+        <p className="font-display text-xl sm:text-2xl text-espresso font-light">{c.name}</p>
         {c.occupation && <p className="font-body text-sm text-tan mt-0.5">{c.occupation}</p>}
       </div>
 
@@ -428,13 +428,13 @@ function MembersTab({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, email, phone, Instagram…"
-          className="flex-1 max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+          className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
         />
         <div className="flex items-center gap-4">
           <p className="font-body text-sm text-tan whitespace-nowrap">
@@ -461,7 +461,7 @@ function MembersTab({
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
                 {["Name", "Email", "Phone", "Instagram", "Referred By", "Notes", "Joined", ""].map((h) => (
-                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
+                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium">
                     {h}
                   </th>
                 ))}
@@ -470,9 +470,9 @@ function MembersTab({
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-sm font-medium text-espresso py-3 px-4">{c.name}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.email}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.phone ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-2.5 px-3 sm:py-3 sm:px-4">{c.name}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.email}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.phone ?? "—"}</td>
                   <td className="font-body text-sm py-3 px-4">
                     {c.ig_handle ? (
                       <a
@@ -485,7 +485,7 @@ function MembersTab({
                       </a>
                     ) : "—"}
                   </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.referred_by ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.referred_by ?? "—"}</td>
                   <td className="py-3 px-4 min-w-[180px]">
                     <input
                       type="text"
@@ -496,7 +496,7 @@ function MembersTab({
                       className={`w-full bg-transparent border-b font-body text-xs text-espresso placeholder-tan/30 focus:outline-none py-1 transition-colors ${savingNote === c.id ? "border-tan/20" : "border-transparent hover:border-tan/20 focus:border-rust"}`}
                     />
                   </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td className="py-3 px-4">
@@ -569,13 +569,13 @@ function RejectedTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, email, phone, reason…"
-          className="flex-1 max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+          className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
         />
         <p className="font-body text-sm text-tan whitespace-nowrap">
           {filtered.length} of {contacts.length} {contacts.length === 1 ? "person" : "people"}
@@ -592,7 +592,7 @@ function RejectedTab() {
             <thead>
               <tr className="border-b border-tan/20 bg-ivory">
                 {["Name", "Email", "Phone", "Instagram", "Reason", "Date", "", ""].map((h) => (
-                  <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">
+                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium">
                     {h}
                   </th>
                 ))}
@@ -601,9 +601,9 @@ function RejectedTab() {
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-sm font-medium text-espresso py-3 px-4">{c.name}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.email}</td>
-                  <td className="font-body text-sm text-tan py-3 px-4">{c.phone ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-2.5 px-3 sm:py-3 sm:px-4">{c.name}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.email}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.phone ?? "—"}</td>
                   <td className="font-body text-sm py-3 px-4">
                     {c.ig_handle ? (
                       <a
@@ -619,7 +619,7 @@ function RejectedTab() {
                   <td className="font-body text-sm text-tan py-3 px-4 italic">
                     {c.rejection_reason ?? <span className="not-italic text-tan/40">—</span>}
                   </td>
-                  <td className="font-body text-sm text-tan py-3 px-4">
+                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
                     {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td className="py-3 px-4">
@@ -826,7 +826,7 @@ function EventsTab() {
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl text-espresso font-light">Events</h2>
+        <h2 className="font-display text-xl sm:text-2xl text-espresso font-light">Events</h2>
         <button
           onClick={() => setAdding((v) => !v)}
           className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
@@ -916,12 +916,12 @@ function EventsTab() {
         const upcoming = events.filter((ev) => new Date(ev.date) >= now);
         const past = events.filter((ev) => new Date(ev.date) < now);
         const EventTable = ({ rows, isPast }: { rows: AdminEvent[]; isPast: boolean }) => (
-          <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory">
                   {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
-                    <th key={h} className="font-body text-xs tracking-widest uppercase text-tan pb-3 pt-3 px-4 font-medium">{h}</th>
+                    <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -931,19 +931,19 @@ function EventsTab() {
                     <td className="font-body text-sm font-medium py-3 px-4">
                       <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">{ev.title}</a>
                     </td>
-                    <td className="font-body text-sm text-tan py-3 px-4">
+                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
                       {new Date(ev.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
-                    <td className="font-body text-sm text-tan py-3 px-4">{ev.location ?? "—"}</td>
-                    <td className="font-body text-sm text-tan py-3 px-4">{ev.partners ?? "—"}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.location ?? "—"}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.partners ?? "—"}</td>
                     <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
-                    <td className="font-body text-sm text-tan py-3 px-4">{ev.capacity}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.capacity}</td>
                     <td className="font-body text-sm py-3 px-4">
                       {ev.waitlist_count > 0
                         ? <span className="text-amber font-medium">{ev.waitlist_count}</span>
                         : <span className="text-tan/40">0</span>}
                     </td>
-                    <td className="font-body text-sm text-tan py-3 px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
                     <td className="py-3 px-4">
                       <button onClick={() => openEdit(ev)} className="font-body text-xs text-tan/50 hover:text-espresso transition-colors">
                         Edit
@@ -1011,7 +1011,7 @@ function ReferralsTab() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h2 className="font-display text-2xl text-espresso font-light mb-1">Referrals</h2>
+        <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Referrals</h2>
         <p className="font-body text-sm text-tan">Who's bringing people in, ranked by number of referrals.</p>
       </div>
 
@@ -1062,7 +1062,7 @@ function MessageTab() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="font-display text-2xl text-espresso font-light mb-1">Welcome Message</h2>
+        <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Welcome Message</h2>
         <p className="font-body text-sm text-tan leading-relaxed">
           Sent automatically when you approve someone. Use{" "}
           <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{name}"}</span>{" "}
@@ -1138,24 +1138,24 @@ function TextBlastTab() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="font-display text-2xl text-espresso font-light mb-1">Text Blasts</h2>
+        <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Text Blasts</h2>
         <p className="font-body text-sm text-tan leading-relaxed">
           Send a message to all approved members at once — event announcements, reminders, or any update you want to share.
         </p>
       </div>
 
       {memberCount !== null && (
-        <div className="bg-white border border-tan/25 rounded-lg px-5 py-4 grid grid-cols-3 divide-x divide-tan/20">
-          <div className="pr-5">
-            <p className="font-display text-3xl text-espresso font-light">{memberCount + optedOutCount}</p>
+        <div className="bg-white border border-tan/25 rounded-lg px-3 sm:px-5 py-4 grid grid-cols-3 divide-x divide-tan/20">
+          <div className="pr-3 sm:pr-5">
+            <p className="font-display text-xl sm:text-3xl text-espresso font-light">{memberCount + optedOutCount}</p>
             <p className="font-body text-xs text-tan mt-0.5">Total approved</p>
           </div>
-          <div className="px-5">
-            <p className="font-display text-3xl text-tan font-light">{optedOutCount}</p>
+          <div className="px-3 sm:px-5">
+            <p className="font-display text-xl sm:text-3xl text-tan font-light">{optedOutCount}</p>
             <p className="font-body text-xs text-tan mt-0.5">Opted out</p>
           </div>
-          <div className="pl-5">
-            <p className="font-display text-3xl text-espresso font-light">{memberCount}</p>
+          <div className="pl-3 sm:pl-5">
+            <p className="font-display text-xl sm:text-3xl text-espresso font-light">{memberCount}</p>
             <p className="font-body text-xs text-tan mt-0.5">Will receive</p>
           </div>
         </div>
@@ -1220,7 +1220,7 @@ function SettingsTab() {
 
   return (
     <div className="max-w-xl space-y-8">
-      <h2 className="font-display text-2xl text-espresso font-light">Settings</h2>
+      <h2 className="font-display text-xl sm:text-2xl text-espresso font-light">Settings</h2>
 
       <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
         <div className="flex items-center justify-between gap-6">

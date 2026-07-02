@@ -42,7 +42,7 @@ export default function MembersLoginPage() {
   }
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-svh bg-oxblood overflow-hidden px-6">
+    <div className="relative flex flex-col items-center justify-center min-h-dvh bg-oxblood overflow-hidden px-6">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{

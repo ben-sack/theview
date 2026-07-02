@@ -11,16 +11,20 @@ export default function Home() {
   return (
     <>
       <Nav />
-      <main>
-        <Hero />
-        <Concept />
-        <Music />
-<HowAccess />
-        <Suspense>
-          <AccessForm />
-        </Suspense>
-      </main>
-      <Footer />
+      <div className="h-dvh overflow-y-scroll snap-y snap-mandatory scroll-smooth">
+        <main>
+          <Hero />
+          <Concept />
+          <Music />
+          <HowAccess />
+        </main>
+        <div className="min-h-dvh md:min-h-0 flex flex-col md:block snap-start">
+          <Suspense>
+            <AccessForm />
+          </Suspense>
+          <Footer />
+        </div>
+      </div>
     </>
   );
 }

@@ -79,16 +79,16 @@ export function AccessForm() {
     <section
       id="access"
       ref={ref}
-      className="py-20 md:py-36 lg:py-48 px-6 md:px-16 lg:px-24 border-t border-rust/10 md:snap-start"
+      className="pt-20 pb-2 md:py-36 lg:py-48 px-6 md:px-16 lg:px-24 border-t border-rust/10"
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
       <div className="max-w-lg">
 
-        <p className={`font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-8 reveal ${v}`}>
+        <p className={`hidden md:block font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-3 md:mb-8 reveal ${v}`}>
           Request Access
         </p>
 
-        <h2 className={`font-display text-[2rem] md:text-[3.25rem] text-ivory font-light leading-[1.2] mb-10 md:mb-14 reveal reveal-d1 ${v}`}>
+        <h2 className={`font-display text-2xl md:text-[3.25rem] text-ivory font-light leading-[1.2] mt-4 md:mt-0 mb-6 md:mb-14 reveal reveal-d1 ${v}`}>
           Let's see if it's
           <br />
           <span className="italic text-cream/50">a good fit.</span>
@@ -101,7 +101,7 @@ export function AccessForm() {
             </p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className={`space-y-8 reveal reveal-d2 ${v}`} noValidate>
+          <form onSubmit={onSubmit} className={`space-y-2 md:space-y-8 reveal reveal-d2 ${v}`} noValidate>
 
             <div className="space-y-1">
               <label htmlFor="name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
@@ -190,11 +190,11 @@ export function AccessForm() {
               <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>
             )}
 
-            <div className="pt-2">
+            <div className="pt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="group inline-flex items-center gap-5 font-body text-[10px] tracking-[0.3em] uppercase text-cream/55 hover:text-cream/90 transition-colors duration-300 py-3 pr-2 -ml-1 pl-1 disabled:opacity-40"
+                className="group inline-flex items-center gap-5 font-body text-[10px] tracking-[0.3em] uppercase text-cream/55 hover:text-cream/90 transition-colors duration-300 py-2 md:py-3 pr-2 -ml-1 pl-1 disabled:opacity-40"
               >
                 <span>{loading ? "Sending…" : "Send"}</span>
                 <span className="block h-px w-8 bg-rust/40 group-hover:w-14 group-hover:bg-amber/60 transition-all duration-400" />
@@ -205,7 +205,7 @@ export function AccessForm() {
         )}
 
         {/* Secondary CTA */}
-        <div className={`mt-20 pt-10 border-t border-rust/10 reveal reveal-d4 ${v}`}>
+        <div className={`mt-3 pt-1 md:mt-20 md:pt-10 border-t border-rust/10 reveal reveal-d4 ${v}`}>
           <a
             href="https://www.instagram.com/theview.la/"
             target="_blank"
