@@ -34,11 +34,21 @@ export default function DoorLoginPage() {
         </div>
         <form onSubmit={login} className="space-y-4">
           <input
+            type="text"
+            value="theview-door"
+            autoComplete="username"
+            readOnly
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+          <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-espresso border border-tan/30 rounded px-4 py-4 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust text-center tracking-widest"
+            autoComplete="current-password"
             autoFocus
           />
           {error && <p className="font-body text-sm text-rust text-center">{error}</p>}

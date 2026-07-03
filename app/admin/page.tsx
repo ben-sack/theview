@@ -142,6 +142,15 @@ export default function AdminPage() {
           </a>
           <h1 className="font-display text-4xl text-espresso font-light mb-10">Admin</h1>
           <form onSubmit={login} className="space-y-6">
+            <input
+              type="text"
+              value="theview-admin"
+              autoComplete="username"
+              readOnly
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
             <div className="space-y-2">
               <label className="font-body text-xs tracking-widest uppercase text-tan font-medium">
                 Password
@@ -152,6 +161,7 @@ export default function AdminPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
+                autoComplete="current-password"
                 autoFocus
               />
             </div>

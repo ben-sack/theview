@@ -71,6 +71,15 @@ export default function ComingSoon() {
           className="flex flex-col items-center gap-5 w-56"
         >
           <input
+            type="text"
+            value="theview-site"
+            autoComplete="username"
+            readOnly
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+          <input
             type="password"
             value={password}
             onChange={(e) => {
@@ -78,7 +87,7 @@ export default function ComingSoon() {
               setError(false);
             }}
             placeholder="password"
-            autoComplete="off"
+            autoComplete="current-password"
             autoFocus
             className="field w-full text-center text-[11px] tracking-[0.28em] placeholder:tracking-[0.2em] placeholder:text-tan/30"
           />
