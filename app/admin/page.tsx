@@ -268,13 +268,17 @@ function PendingTab({
           </button>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {contacts.map((c) => (
           <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
         ))}
       </div>
     </div>
   );
+}
+
+function capitalizeName(name: string) {
+  return name.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
 function PendingCard({
@@ -288,66 +292,57 @@ function PendingCard({
   const [reason, setReason] = useState("");
 
   return (
-    <div className="bg-white border border-tan/25 rounded-lg p-5 flex flex-col gap-4 shadow-sm">
-      <div>
-        <p className="font-display text-xl sm:text-2xl text-espresso font-light">{c.name}</p>
-        {c.occupation && <p className="font-body text-sm text-tan mt-0.5">{c.occupation}</p>}
-      </div>
-
-      <div className="space-y-2 font-body text-sm border-t border-tan/15 pt-3">
-        {c.email && (
-          <div className="flex gap-3 items-baseline">
-            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Email</span>
-            <span className="text-espresso">{c.email}</span>
-          </div>
-        )}
-        {c.phone && (
-          <div className="flex gap-3 items-baseline">
-            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Phone</span>
-            <span className="text-espresso">{c.phone}</span>
-          </div>
-        )}
-        {c.ig_handle && (
-          <div className="flex gap-3 items-baseline">
-            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">IG</span>
+    <div className="bg-white border border-tan/25 rounded-lg pt-2 px-3 pb-3 sm:pt-3 sm:px-5 sm:pb-5 flex flex-col gap-1 sm:gap-2 shadow-sm">
+      <div className="space-y-0.5">
+        <div className="grid grid-cols-2 gap-x-3 items-baseline">
+          <p className="min-w-0 font-display text-xl sm:text-2xl text-espresso font-semibold truncate">{capitalizeName(c.name)}</p>
+          {c.ig_handle && (
             <a
               href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-amber hover:text-rust transition-colors"
+              className="min-w-0 text-right truncate font-body text-[11px] sm:text-sm text-amber hover:text-rust transition-colors"
             >
               {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
             </a>
+          )}
+        </div>
+
+        {(c.email || c.phone) && (
+          <div className="grid grid-cols-2 gap-x-3 items-baseline font-body text-[11px] sm:text-sm">
+            {c.email && <p className="min-w-0 text-espresso truncate">{c.email}</p>}
+            {c.phone && <p className="min-w-0 text-right text-espresso truncate">{c.phone}</p>}
           </div>
         )}
-        {c.referred_by && (
-          <div className="flex gap-3 items-baseline">
-            <span className="text-xs uppercase tracking-widest text-tan w-8 shrink-0">Ref</span>
-            <span className="text-espresso">{c.referred_by}</span>
+
+        {(c.occupation || c.referred_by) && (
+          <div className="grid grid-cols-2 gap-x-3 items-baseline font-body text-[11px] sm:text-sm">
+            {c.occupation && <p className="min-w-0 text-tan truncate">{c.occupation}</p>}
+            {c.referred_by && <p className="min-w-0 text-right text-tan truncate">via {c.referred_by}</p>}
           </div>
         )}
       </div>
 
       {rejecting ? (
-        <div className="space-y-2 mt-auto pt-1">
+        <div className="space-y-1.5 sm:space-y-2 mt-auto pt-1">
           <input
             autoFocus
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (optional)"
-            className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+            className="w-full border border-tan/30 rounded px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
           />
           <div className="flex gap-2">
             <button
               onClick={() => onUpdate(c.id, "rejected", reason)}
-              className="flex-1 font-body text-sm font-medium py-2 bg-rust text-ivory rounded hover:bg-rust/80 transition-colors"
+              className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2 bg-rust text-ivory rounded hover:bg-rust/80 transition-colors"
             >
               Confirm Reject
             </button>
             <button
               onClick={() => { setRejecting(false); setReason(""); }}
-              className="font-body text-sm px-4 py-2 border border-tan/30 text-tan rounded hover:text-espresso transition-colors"
+              className="font-body text-xs sm:text-sm px-4 py-1.5 sm:py-2 border border-tan/30 text-tan rounded hover:text-espresso transition-colors"
             >
               Cancel
             </button>
@@ -357,13 +352,13 @@ function PendingCard({
         <div className="flex gap-3 mt-auto pt-1">
           <button
             onClick={() => onUpdate(c.id, "approved")}
-            className="flex-1 font-body text-sm font-medium py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+            className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
           >
             Approve
           </button>
           <button
             onClick={() => setRejecting(true)}
-            className="flex-1 font-body text-sm font-medium py-2.5 bg-white text-rust border border-rust/40 rounded hover:bg-rust/5 transition-colors duration-200"
+            className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 bg-white text-rust border border-rust/40 rounded hover:bg-rust/5 transition-colors duration-200"
           >
             Reject
           </button>
@@ -443,7 +438,7 @@ function MembersTab({
           {contacts.length > 0 && (
             <button
               onClick={onExport}
-              className="font-body text-sm font-medium text-espresso border border-tan/40 hover:border-rust hover:text-rust px-4 py-2 rounded transition-all duration-200 whitespace-nowrap"
+              className="font-body text-xs sm:text-sm font-medium text-espresso border border-tan/40 hover:border-rust hover:text-rust px-3 py-1.5 sm:px-4 sm:py-2 rounded transition-all duration-200 whitespace-nowrap"
             >
               Export CSV
             </button>
@@ -459,9 +454,9 @@ function MembersTab({
         <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Referred By", "Notes", "Joined", ""].map((h) => (
-                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium">
+              <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
+                {["Name", "Instagram", "Referred By", "Phone", "Email", "Notes", "Joined", ""].map((h) => (
+                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
                     {h}
                   </th>
                 ))}
@@ -469,11 +464,9 @@ function MembersTab({
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-2.5 px-3 sm:py-3 sm:px-4">{c.name}</td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.email}</td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.phone ?? "—"}</td>
-                  <td className="font-body text-sm py-3 px-4">
+                <tr key={c.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.name}</td>
+                  <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     {c.ig_handle ? (
                       <a
                         href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
@@ -485,21 +478,23 @@ function MembersTab({
                       </a>
                     ) : "—"}
                   </td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.referred_by ?? "—"}</td>
-                  <td className="py-3 px-4 min-w-[180px]">
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.referred_by ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 min-w-[180px]">
                     <input
                       type="text"
                       value={notes[c.id] ?? ""}
                       onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
                       onBlur={() => saveNote(c.id)}
                       placeholder="Add note…"
-                      className={`w-full bg-transparent border-b font-body text-xs text-espresso placeholder-tan/30 focus:outline-none py-1 transition-colors ${savingNote === c.id ? "border-tan/20" : "border-transparent hover:border-tan/20 focus:border-rust"}`}
+                      className={`w-full bg-transparent border-b font-body text-xs text-espresso placeholder-tan/30 focus:outline-none py-1 text-center transition-colors ${savingNote === c.id ? "border-tan/20" : "border-transparent hover:border-tan/20 focus:border-rust"}`}
                     />
                   </td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
-                    {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                    {formatDateShort(c.created_at)}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     <button
                       onClick={() => handleDelete(c.id, c.name)}
                       disabled={deleting === c.id}
@@ -590,9 +585,9 @@ function RejectedTab() {
         <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-tan/20 bg-ivory">
-                {["Name", "Email", "Phone", "Instagram", "Reason", "Date", "", ""].map((h) => (
-                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium">
+              <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
+                {["Name", "Instagram", "Phone", "Email", "Reason", "Date", "", ""].map((h) => (
+                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
                     {h}
                   </th>
                 ))}
@@ -600,11 +595,9 @@ function RejectedTab() {
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-2.5 px-3 sm:py-3 sm:px-4">{c.name}</td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.email}</td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{c.phone ?? "—"}</td>
-                  <td className="font-body text-sm py-3 px-4">
+                <tr key={c.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.name}</td>
+                  <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     {c.ig_handle ? (
                       <a
                         href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
@@ -616,13 +609,15 @@ function RejectedTab() {
                       </a>
                     ) : "—"}
                   </td>
-                  <td className="font-body text-sm text-tan py-3 px-4 italic">
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center italic">
                     {c.rejection_reason ?? <span className="not-italic text-tan/40">—</span>}
                   </td>
-                  <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
-                    {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                    {formatDateShort(c.created_at)}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     <button
                       onClick={() => handleApprove(c.id)}
                       disabled={approving === c.id}
@@ -631,7 +626,7 @@ function RejectedTab() {
                       {approving === c.id ? "…" : "Approve"}
                     </button>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     <button
                       onClick={() => handleDelete(c.id, c.name)}
                       disabled={deleting === c.id}
@@ -662,6 +657,14 @@ type AdminEvent = {
   checked_in_count: number;
   waitlist_count: number;
 };
+
+function formatDateShort(date: string | Date) {
+  const d = new Date(date);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
 
 function EventsTab() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -829,7 +832,7 @@ function EventsTab() {
         <h2 className="font-display text-xl sm:text-2xl text-espresso font-light">Events</h2>
         <button
           onClick={() => setAdding((v) => !v)}
-          className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+          className="font-body text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-5 sm:py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
         >
           {adding ? "Cancel" : "+ Add Event"}
         </button>
@@ -913,43 +916,47 @@ function EventsTab() {
         <p className="font-body text-base text-tan italic">No events yet.</p>
       ) : (() => {
         const now = new Date();
-        const upcoming = events.filter((ev) => new Date(ev.date) >= now);
-        const past = events.filter((ev) => new Date(ev.date) < now);
+        const upcoming = events
+          .filter((ev) => new Date(ev.date) >= now)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const past = events
+          .filter((ev) => new Date(ev.date) < now)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const EventTable = ({ rows, isPast }: { rows: AdminEvent[]; isPast: boolean }) => (
           <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-tan/20 bg-ivory">
+                <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
                   {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
-                    <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap">{h}</th>
+                    <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((ev) => (
-                  <tr key={ev.id} className="border-b border-tan/10 hover:bg-ivory/60 transition-colors">
-                    <td className="font-body text-sm font-medium py-3 px-4">
+                  <tr key={ev.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+                    <td className="font-body text-xs sm:text-sm font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">{ev.title}</a>
                     </td>
-                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">
-                      {new Date(ev.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                      {formatDateShort(ev.date)}
                     </td>
-                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.location ?? "—"}</td>
-                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.partners ?? "—"}</td>
-                    <td className="font-body text-sm text-espresso font-medium py-3 px-4">{ev.rsvp_count}</td>
-                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{ev.capacity}</td>
-                    <td className="font-body text-sm py-3 px-4">
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.location ?? "—"}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.partners ?? "—"}</td>
+                    <td className="font-body text-xs sm:text-sm text-espresso font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.rsvp_count}</td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.capacity}</td>
+                    <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       {ev.waitlist_count > 0
                         ? <span className="text-amber font-medium">{ev.waitlist_count}</span>
                         : <span className="text-tan/40">0</span>}
                     </td>
-                    <td className="font-body text-xs sm:text-sm text-tan py-2.5 px-3 sm:py-3 sm:px-4">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
-                    <td className="py-3 px-4">
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{isPast ? `${ev.checked_in_count ?? 0} (${ev.rsvp_count > 0 ? Math.round(((ev.checked_in_count ?? 0) / ev.rsvp_count) * 100) : 0}%)` : ev.allow_guests ? "Yes" : "No"}</td>
+                    <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       <button onClick={() => openEdit(ev)} className="font-body text-xs text-tan/50 hover:text-espresso transition-colors">
                         Edit
                       </button>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       <button onClick={() => deleteEvent(ev.id)} disabled={deleting === ev.id} className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40">
                         {deleting === ev.id ? "Deleting…" : "Delete"}
                       </button>
@@ -984,6 +991,7 @@ function EventsTab() {
 function ReferralsTab() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/contacts?status=pending")
@@ -1000,10 +1008,12 @@ function ReferralsTab() {
   if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
 
   const counts: Record<string, number> = {};
+  const referred: Record<string, Contact[]> = {};
   for (const c of contacts) {
     if (!c.referred_by?.trim()) continue;
     const key = c.referred_by.trim().toLowerCase();
     counts[key] = (counts[key] ?? 0) + 1;
+    (referred[key] ??= []).push(c);
   }
 
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -1012,24 +1022,51 @@ function ReferralsTab() {
     <div className="space-y-6 max-w-lg">
       <div>
         <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Referrals</h2>
-        <p className="font-body text-sm text-tan">Who's bringing people in, ranked by number of referrals.</p>
+        <p className="font-body text-sm text-tan">Who's bringing people in, ranked by number of referrals. Tap a row to see who they referred.</p>
       </div>
 
       {sorted.length === 0 ? (
         <p className="font-body text-base text-tan italic">No referrals recorded yet.</p>
       ) : (
         <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
-          {sorted.map(([name, count], i) => (
-            <div key={name} className={`flex items-center justify-between px-5 py-4 ${i !== sorted.length - 1 ? "border-b border-tan/10" : ""}`}>
-              <div className="flex items-center gap-4">
-                <span className="font-body text-xs text-tan/50 w-5 text-right">{i + 1}</span>
-                <span className="font-body text-sm font-medium text-espresso capitalize">{name}</span>
+          {sorted.map(([name, count], i) => {
+            const isOpen = expanded === name;
+            return (
+              <div key={name} className={i !== sorted.length - 1 ? "border-b border-tan/10" : ""}>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(isOpen ? null : name)}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/60 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="font-body text-xs text-tan/50 w-5 text-right">{i + 1}</span>
+                    <span className="font-body text-sm font-medium text-espresso capitalize">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-body text-sm text-tan">
+                      {count} {count === 1 ? "referral" : "referrals"}
+                    </span>
+                    <svg
+                      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      className={`shrink-0 text-tan transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="bg-ivory/50 px-5 py-3 border-t border-tan/10 max-h-64 overflow-y-auto space-y-2">
+                    {referred[name].map((r) => (
+                      <div key={r.id} className="flex items-center justify-between gap-3">
+                        <span className="font-body text-sm text-espresso">{capitalizeName(r.name)}</span>
+                        <span className="font-body text-xs text-tan capitalize">{r.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <span className="font-body text-sm text-tan">
-                {count} {count === 1 ? "referral" : "referrals"}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

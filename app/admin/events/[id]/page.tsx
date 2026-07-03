@@ -52,6 +52,9 @@ export default function EventDetailPage() {
   const [eventMessage, setEventMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
+  const [textBlastOpen, setTextBlastOpen] = useState(false);
+  const [guestListOpen, setGuestListOpen] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/events/${id}`)
@@ -135,6 +138,108 @@ export default function EventDetailPage() {
 
   if (!event) return null;
 
+  const guestListPanel = (
+    <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowWaitlist(false)}
+            className={`font-body text-sm font-medium transition-colors ${!showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
+          >
+            Guest List
+          </button>
+          {waitlist.length > 0 && (
+            <>
+              <span className="text-tan/30">|</span>
+              <button
+                onClick={() => setShowWaitlist(true)}
+                className={`font-body text-sm font-medium transition-colors ${showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
+              >
+                Waitlist
+                <span className={`ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-body ${showWaitlist ? "bg-rust text-ivory" : "bg-tan/20 text-espresso"}`}>
+                  {waitlist.length}
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-body text-xs text-tan">
+            {showWaitlist ? `${waitlist.length} waiting` : `${totalAttending} / ${event.capacity}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setGuestListOpen((v) => !v)}
+            aria-label={guestListOpen ? "Collapse guest list" : "Expand guest list"}
+          >
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={`text-tan transition-transform duration-200 ${guestListOpen ? "rotate-180" : ""}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {guestListOpen && (!showWaitlist ? (
+        rsvps.length === 0 ? (
+          <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
+        ) : (
+          <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+            {rsvps.map((r) => (
+              <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
+                  {r.party_size > 1 && (
+                    <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
+                  )}
+                </div>
+                <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
+                <p className="font-body text-xs text-tan/50 mt-0.5">
+                  {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        waitlist.length === 0 ? (
+          <p className="font-body text-sm text-tan italic px-5 py-6 text-center">Waitlist is empty.</p>
+        ) : (
+          <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+            {waitlist.map((w, i) => (
+              <div key={w.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-body text-xs text-tan/50 shrink-0">#{i + 1}</span>
+                      <p className="font-body text-sm font-medium text-espresso truncate">{w.contacts.name}</p>
+                      {w.party_size > 1 && (
+                        <span className="font-body text-xs text-tan shrink-0">+{w.party_size - 1}</span>
+                      )}
+                    </div>
+                    <p className="font-body text-xs text-tan truncate">{w.contacts.ig_handle ?? w.contacts.email}</p>
+                    <p className="font-body text-xs text-tan/50 mt-0.5">
+                      Joined {new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => promoteFromWaitlist(w.id)}
+                    disabled={promotingId === w.id}
+                    className="shrink-0 font-body text-xs px-2.5 py-1 bg-espresso text-ivory rounded hover:bg-rust transition-colors disabled:opacity-50 mt-0.5"
+                  >
+                    {promotingId === w.id ? "…" : "Admit"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-ivory text-espresso">
       <header className="bg-espresso px-4 sm:px-8 py-4 flex items-center justify-between gap-2">
@@ -153,15 +258,13 @@ export default function EventDetailPage() {
       <main className="px-4 sm:px-8 py-6 sm:py-8">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
           {/* Left column — controls */}
-          <div className="w-full flex-1 min-w-0 space-y-6 lg:space-y-8 order-2 lg:order-1">
-            {/* Event info */}
-            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-3">
+          <div className="w-full flex-1 min-w-0 space-y-6 lg:space-y-8">
+            {/* Event info — name, date, live attendance */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <h1 className="font-display text-2xl sm:text-3xl text-espresso font-light">{event.title}</h1>
+                  <h1 className="font-display text-2xl sm:text-3xl text-espresso font-bold">{event.title}</h1>
                   <p className="font-body text-sm text-tan">{eventDate}</p>
-                  {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
-                  {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
                 </div>
                 <div className="text-right shrink-0 space-y-2">
                   <div>
@@ -178,167 +281,123 @@ export default function EventDetailPage() {
                   )}
                 </div>
               </div>
-              {event.allow_guests && (
-                <p className="font-body text-xs text-tan/50 tracking-widest uppercase">Guests allowed</p>
-              )}
             </div>
+
+            {/* Event details — location, co-promoter, guest policy */}
+            {(event.location || event.partners || event.allow_guests) && (
+              <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-1">
+                {event.location && <p className="font-body text-sm text-tan">{event.location}</p>}
+                {event.partners && <p className="font-body text-sm text-tan">With {event.partners}</p>}
+                {event.allow_guests && (
+                  <p className="font-body text-xs text-tan/50 tracking-widest uppercase pt-1">Guests allowed</p>
+                )}
+              </div>
+            )}
+
+            {/* Guest list — mobile only, sits right under event info */}
+            <div className="lg:hidden">{guestListPanel}</div>
 
             {/* Send RSVP blast */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
-              <div>
-                <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
-                <p className="font-body text-xs text-tan mt-1">
-                  Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
-                  <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
-                  <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <textarea
-                  value={blastTemplate}
-                  onChange={(e) => setBlastTemplate(e.target.value)}
-                  rows={4}
-                  className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
-                />
-                <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
-              </div>
-              {blastResult && (
-                <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-                  <p>Sent to {blastResult.sent} members.</p>
-                  {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
-                </div>
-              )}
               <button
-                onClick={sendBlast}
-                disabled={blasting || !blastTemplate.trim()}
-                className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                type="button"
+                onClick={() => setRsvpBlastOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left"
               >
-                {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
+                <p className="font-body text-sm font-medium text-espresso">RSVP Invite Blast</p>
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={`shrink-0 text-tan transition-transform duration-200 ${rsvpBlastOpen ? "rotate-180" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </button>
+
+              {rsvpBlastOpen && (
+                <>
+                  <p className="font-body text-xs text-tan -mt-2">
+                    Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
+                  </p>
+                  <div className="space-y-1">
+                    <textarea
+                      value={blastTemplate}
+                      onChange={(e) => setBlastTemplate(e.target.value)}
+                      rows={4}
+                      className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+                    />
+                    <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
+                  </div>
+                  {blastResult && (
+                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+                      <p>Sent to {blastResult.sent} members.</p>
+                      {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
+                    </div>
+                  )}
+                  <button
+                    onClick={sendBlast}
+                    disabled={blasting || !blastTemplate.trim()}
+                    className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Event-specific text blast */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
-              <div>
-                <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
-                <p className="font-body text-xs text-tan mt-1">
-                  Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <textarea
-                  value={eventMessage}
-                  onChange={(e) => setEventMessage(e.target.value)}
-                  rows={5}
-                  placeholder=""
-                  className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
-                />
-                <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
-              </div>
-              {messageResult && (
-                <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-                  <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
-                  {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
-                </div>
-              )}
               <button
-                onClick={sendEventMessage}
-                disabled={sendingMessage || !eventMessage.trim()}
-                className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                type="button"
+                onClick={() => setTextBlastOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left"
               >
-                {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+                <p className="font-body text-sm font-medium text-espresso">Event Text Blast</p>
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={`shrink-0 text-tan transition-transform duration-200 ${textBlastOpen ? "rotate-180" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </button>
+
+              {textBlastOpen && (
+                <>
+                  <p className="font-body text-xs text-tan -mt-2">
+                    Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
+                  </p>
+                  <div className="space-y-1">
+                    <textarea
+                      value={eventMessage}
+                      onChange={(e) => setEventMessage(e.target.value)}
+                      rows={5}
+                      placeholder=""
+                      className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+                    />
+                    <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
+                  </div>
+                  {messageResult && (
+                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+                      <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
+                      {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
+                    </div>
+                  )}
+                  <button
+                    onClick={sendEventMessage}
+                    disabled={sendingMessage || !eventMessage.trim()}
+                    className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Right column — RSVP list + waitlist */}
-          <div className="w-full lg:w-80 shrink-0 lg:sticky lg:top-8 space-y-4 order-1 lg:order-2">
-            {/* Guest list */}
-            <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setShowWaitlist(false)}
-                    className={`font-body text-sm font-medium transition-colors ${!showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
-                  >
-                    Guest List
-                  </button>
-                  {waitlist.length > 0 && (
-                    <>
-                      <span className="text-tan/30">|</span>
-                      <button
-                        onClick={() => setShowWaitlist(true)}
-                        className={`font-body text-sm font-medium transition-colors ${showWaitlist ? "text-espresso" : "text-tan hover:text-espresso"}`}
-                      >
-                        Waitlist
-                        <span className={`ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-body ${showWaitlist ? "bg-rust text-ivory" : "bg-tan/20 text-espresso"}`}>
-                          {waitlist.length}
-                        </span>
-                      </button>
-                    </>
-                  )}
-                </div>
-                <span className="font-body text-xs text-tan">
-                  {showWaitlist ? `${waitlist.length} waiting` : `${totalAttending} / ${event.capacity}`}
-                </span>
-              </div>
-
-              {!showWaitlist ? (
-                rsvps.length === 0 ? (
-                  <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
-                ) : (
-                  <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
-                    {rsvps.map((r) => (
-                      <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
-                          {r.party_size > 1 && (
-                            <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
-                          )}
-                        </div>
-                        <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
-                        <p className="font-body text-xs text-tan/50 mt-0.5">
-                          {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )
-              ) : (
-                waitlist.length === 0 ? (
-                  <p className="font-body text-sm text-tan italic px-5 py-6 text-center">Waitlist is empty.</p>
-                ) : (
-                  <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
-                    {waitlist.map((w, i) => (
-                      <div key={w.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-body text-xs text-tan/50 shrink-0">#{i + 1}</span>
-                              <p className="font-body text-sm font-medium text-espresso truncate">{w.contacts.name}</p>
-                              {w.party_size > 1 && (
-                                <span className="font-body text-xs text-tan shrink-0">+{w.party_size - 1}</span>
-                              )}
-                            </div>
-                            <p className="font-body text-xs text-tan truncate">{w.contacts.ig_handle ?? w.contacts.email}</p>
-                            <p className="font-body text-xs text-tan/50 mt-0.5">
-                              Joined {new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => promoteFromWaitlist(w.id)}
-                            disabled={promotingId === w.id}
-                            className="shrink-0 font-body text-xs px-2.5 py-1 bg-espresso text-ivory rounded hover:bg-rust transition-colors disabled:opacity-50 mt-0.5"
-                          >
-                            {promotingId === w.id ? "…" : "Admit"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
+          {/* Right column — desktop only, sticky guest list */}
+          <div className="hidden lg:block lg:w-80 shrink-0 lg:sticky lg:top-8 space-y-4">
+            {guestListPanel}
           </div>
         </div>
       </main>
