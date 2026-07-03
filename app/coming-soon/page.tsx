@@ -71,13 +71,6 @@ export default function ComingSoon() {
           className="flex flex-col items-center gap-5 w-56"
         >
           <input
-            type="text"
-            name="username"
-            defaultValue="Site Access"
-            autoComplete="username"
-            className="w-full bg-transparent border-none text-center font-body text-[9px] tracking-[0.3em] uppercase text-tan/30 focus:outline-none"
-          />
-          <input
             type="password"
             value={password}
             onChange={(e) => {
@@ -85,7 +78,7 @@ export default function ComingSoon() {
               setError(false);
             }}
             placeholder="password"
-            autoComplete="current-password"
+            autoComplete="off"
             autoFocus
             className="field w-full text-center text-[11px] tracking-[0.28em] placeholder:tracking-[0.2em] placeholder:text-tan/30"
           />
