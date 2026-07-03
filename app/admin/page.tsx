@@ -143,6 +143,18 @@ export default function AdminPage() {
           <h1 className="font-display text-4xl text-espresso font-light mb-10">Admin</h1>
           <form onSubmit={login} className="space-y-6">
             <div className="space-y-2">
+              <label className="font-body text-xs tracking-widest uppercase text-tan/50 font-medium">
+                Area
+              </label>
+              <input
+                type="text"
+                name="username"
+                defaultValue="Admin"
+                autoComplete="username"
+                className="w-full border border-tan/20 bg-ivory/50 rounded px-4 py-2 text-sm text-tan/60 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="font-body text-xs tracking-widest uppercase text-tan font-medium">
                 Password
               </label>
@@ -152,6 +164,7 @@ export default function AdminPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
+                autoComplete="current-password"
                 autoFocus
               />
             </div>
