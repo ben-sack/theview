@@ -190,6 +190,13 @@ export function AccessForm() {
               <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>
             )}
 
+            <p className="font-body text-[9px] tracking-[0.15em] text-cream/25 leading-relaxed">
+              By submitting, you agree to receive SMS updates about events from The View. Message and data rates may apply. Reply STOP to opt out. See our{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-cream/50 transition-colors">
+                Privacy Policy
+              </a>.
+            </p>
+
             <div className="pt-4">
               <button
                 type="submit"

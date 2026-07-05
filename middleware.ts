@@ -19,6 +19,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api/referrer") ||
     pathname.startsWith("/members") ||
     pathname.startsWith("/api/members") ||
+    pathname.startsWith("/privacy") ||
     pathname === "/contact.vcf"
   ) {
     return NextResponse.next();
