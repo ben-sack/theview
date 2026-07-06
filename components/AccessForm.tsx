@@ -79,7 +79,7 @@ export function AccessForm() {
     <section
       id="access"
       ref={ref}
-      className="pt-20 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 md:flex-1 md:flex md:items-center"
+      className="pt-14 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 md:flex-1 md:flex md:items-center"
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
       <div className="max-w-lg w-full">
@@ -88,7 +88,7 @@ export function AccessForm() {
           Request Access
         </p>
 
-        <h2 className={`font-display text-2xl md:text-[2.75rem] text-ivory font-light leading-[1.2] mt-4 md:mt-0 mb-6 md:mb-6 reveal reveal-d1 ${v}`}>
+        <h2 className={`font-display text-2xl md:text-[2.75rem] text-ivory font-light leading-[1.2] mt-2 md:mt-0 mb-4 md:mb-6 reveal reveal-d1 ${v}`}>
           Let's see if it's
           <br />
           <span className="italic text-cream/50">a good fit.</span>
@@ -197,7 +197,7 @@ export function AccessForm() {
               </a>.
             </p>
 
-            <div className="pt-4">
+            <div className="pt-2 md:pt-4">
               <button
                 type="submit"
                 disabled={loading}
@@ -212,7 +212,7 @@ export function AccessForm() {
         )}
 
         {/* Secondary CTA */}
-        <div className={`mt-3 pt-1 md:mt-2 md:pt-3 border-t border-rust/10 reveal reveal-d4 ${v}`}>
+        <div className={`mt-2 pt-1 md:mt-2 md:pt-3 border-t border-rust/10 reveal reveal-d4 ${v}`}>
           <a
             href="https://www.instagram.com/theview.la/"
             target="_blank"
