@@ -18,7 +18,7 @@ export default function Home() {
           <Music />
           <HowAccess />
         </main>
-        <div className="min-h-dvh md:min-h-0 flex flex-col md:block snap-start">
+        <div className="min-h-dvh flex flex-col snap-start">
           <Suspense>
             <AccessForm />
           </Suspense>

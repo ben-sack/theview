@@ -79,16 +79,16 @@ export function AccessForm() {
     <section
       id="access"
       ref={ref}
-      className="pt-20 pb-2 md:py-36 lg:py-48 px-6 md:px-16 lg:px-24 border-t border-rust/10"
+      className="pt-20 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 md:flex-1 md:flex md:items-center"
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
-      <div className="max-w-lg">
+      <div className="max-w-lg w-full">
 
-        <p className={`hidden md:block font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-3 md:mb-8 reveal ${v}`}>
+        <p className={`hidden md:block font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-3 md:mb-2 reveal ${v}`}>
           Request Access
         </p>
 
-        <h2 className={`font-display text-2xl md:text-[3.25rem] text-ivory font-light leading-[1.2] mt-4 md:mt-0 mb-6 md:mb-14 reveal reveal-d1 ${v}`}>
+        <h2 className={`font-display text-2xl md:text-[2.75rem] text-ivory font-light leading-[1.2] mt-4 md:mt-0 mb-6 md:mb-6 reveal reveal-d1 ${v}`}>
           Let's see if it's
           <br />
           <span className="italic text-cream/50">a good fit.</span>
@@ -101,7 +101,7 @@ export function AccessForm() {
             </p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className={`space-y-2 md:space-y-8 reveal reveal-d2 ${v}`} noValidate>
+          <form onSubmit={onSubmit} className={`space-y-2 md:space-y-3 reveal reveal-d2 ${v}`} noValidate>
 
             <div className="space-y-1">
               <label htmlFor="name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
@@ -212,7 +212,7 @@ export function AccessForm() {
         )}
 
         {/* Secondary CTA */}
-        <div className={`mt-3 pt-1 md:mt-20 md:pt-10 border-t border-rust/10 reveal reveal-d4 ${v}`}>
+        <div className={`mt-3 pt-1 md:mt-2 md:pt-3 border-t border-rust/10 reveal reveal-d4 ${v}`}>
           <a
             href="https://www.instagram.com/theview.la/"
             target="_blank"

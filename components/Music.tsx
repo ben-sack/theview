@@ -8,9 +8,9 @@ export function Music() {
   return (
     <section
       ref={ref}
-      className="min-h-dvh md:min-h-0 flex flex-col md:block md:py-36 lg:py-48 px-6 md:px-16 lg:px-24 border-t border-rust/10 snap-start"
+      className="min-h-dvh flex flex-col px-6 md:px-16 lg:px-24 border-t border-rust/10 snap-start"
     >
-      <div className="max-w-5xl flex-1 flex flex-col justify-between md:block pt-28 pb-14 md:pt-0 md:pb-0">
+      <div className="max-w-5xl flex-1 flex flex-col justify-between pt-28 pb-14 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20">
         <div>
           <p className={`font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-14 reveal ${v}`}>
             The Sound
