@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="flex-1 md:flex-none flex flex-col justify-center py-2 md:py-4 px-6 md:px-16 md:border-t md:border-rust/10 bg-espresso">
+    <footer className="flex-none flex flex-col justify-center py-2 md:py-4 px-6 md:px-16 md:border-t md:border-rust/10 bg-espresso">
       <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-0 md:gap-4">
         <span className="font-display text-cream/25 text-sm tracking-widest font-light">
           The View — Los Angeles

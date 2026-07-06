@@ -79,7 +79,7 @@ export function AccessForm() {
     <section
       id="access"
       ref={ref}
-      className="pt-14 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 md:flex-1 md:flex md:items-center"
+      className="pt-14 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 flex-1 flex items-center"
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
       <div className="max-w-lg w-full">
