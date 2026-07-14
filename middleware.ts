@@ -6,6 +6,7 @@ export function middleware(request: NextRequest) {
 
   // Coming-soon, unlock API, and admin routes bypass the site lock
   if (
+    pathname === "/" ||
     pathname.startsWith("/coming-soon") ||
     pathname.startsWith("/api/unlock") ||
     pathname.startsWith("/admin") ||
