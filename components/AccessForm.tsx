@@ -104,7 +104,7 @@ export function AccessForm() {
       <div className="w-full max-w-lg md:max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 lg:gap-24 md:items-center">
       <div className="max-w-lg w-full md:order-2">
 
-        <div className="hidden md:block md:translate-x-4 lg:translate-x-6">
+        <div className="hidden md:block w-full text-center">
           <p className={`font-body text-xs tracking-[0.36em] uppercase text-tan/95 mb-3 md:mb-2 reveal ${v}`}>
             Request Access
           </p>
