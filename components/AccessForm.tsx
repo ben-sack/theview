@@ -242,7 +242,10 @@ export function AccessForm() {
                   No thanks
                 </label>
               </div>
-              <p className="font-body text-[10px] tracking-[0.15em] text-cream/50 leading-relaxed">
+              <p className="md:hidden font-body text-[10px] tracking-[0.15em] text-cream/50 leading-relaxed">
+                This is how we notify you if you&apos;re approved and invite you to events — without it, we can&apos;t reach you.
+              </p>
+              <p className="hidden md:block font-body text-[10px] tracking-[0.15em] text-cream/50 leading-relaxed">
                 This is how we notify you if you&apos;re approved and invite you to future events — without it, we won&apos;t be able to reach you.
               </p>
             </div>
