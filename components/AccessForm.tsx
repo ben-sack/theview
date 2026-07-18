@@ -104,9 +104,11 @@ export function AccessForm() {
       <div className="w-full max-w-lg md:max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 lg:gap-24 md:items-center">
       <div className="max-w-lg w-full md:order-2">
 
-        <p className={`hidden md:block font-body text-xs tracking-[0.36em] uppercase text-tan/95 mb-3 md:mb-2 reveal ${v}`}>
-          Request Access
-        </p>
+        <div className="hidden md:block md:translate-x-4 lg:translate-x-6">
+          <p className={`font-body text-xs tracking-[0.36em] uppercase text-tan/95 mb-3 md:mb-2 reveal ${v}`}>
+            Request Access
+          </p>
+        </div>
 
         <h2 className={`font-display text-2xl md:hidden text-ivory font-light leading-[1.2] mt-2 mb-4 reveal reveal-d1 ${v}`}>
           Let's see if it's
