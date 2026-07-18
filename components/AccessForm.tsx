@@ -104,7 +104,7 @@ export function AccessForm() {
       <div className="w-full max-w-lg md:max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 lg:gap-24 md:items-center">
       <div className="max-w-lg w-full">
 
-        <p className={`hidden md:block font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-3 md:mb-2 reveal ${v}`}>
+        <p className={`hidden md:block font-body text-xs tracking-[0.36em] uppercase text-tan/95 mb-3 md:mb-2 reveal ${v}`}>
           Request Access
         </p>
 
@@ -290,11 +290,11 @@ export function AccessForm() {
 
       </div>
 
-      <div className={`hidden md:block reveal reveal-d1 ${v}`}>
-        <h2 className="font-display text-5xl lg:text-6xl xl:text-7xl text-ivory font-light leading-[1.15]">
-          Let's see if it's
+      <div className="hidden md:block md:translate-x-6 md:-translate-y-4 lg:translate-x-10 lg:-translate-y-6">
+        <h2 className={`font-display text-5xl lg:text-6xl xl:text-7xl font-light leading-[1.15] reveal reveal-d1 ${v}`}>
+          <span className="text-ivory/65">Let's see if it's</span>
           <br />
-          <span className="italic text-cream/50">a good fit.</span>
+          <span className="italic text-cream/40">a good fit.</span>
         </h2>
       </div>
 
