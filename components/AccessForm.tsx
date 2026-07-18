@@ -102,7 +102,7 @@ export function AccessForm() {
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
       <div className="w-full max-w-lg md:max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 lg:gap-24 md:items-center">
-      <div className="max-w-lg w-full">
+      <div className="max-w-lg w-full md:order-2">
 
         <p className={`hidden md:block font-body text-xs tracking-[0.36em] uppercase text-tan/95 mb-3 md:mb-2 reveal ${v}`}>
           Request Access
@@ -290,7 +290,7 @@ export function AccessForm() {
 
       </div>
 
-      <div className="hidden md:block md:translate-x-6 md:-translate-y-4 lg:translate-x-10 lg:-translate-y-6">
+      <div className="hidden md:block md:order-1 md:translate-x-6 md:-translate-y-4 lg:translate-x-10 lg:-translate-y-6">
         <h2 className={`font-display text-5xl lg:text-6xl xl:text-7xl font-light leading-[1.15] reveal reveal-d1 ${v}`}>
           <span className="text-ivory/65">Let's see if it's</span>
           <br />
