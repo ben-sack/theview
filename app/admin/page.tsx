@@ -430,6 +430,45 @@ function capitalizeName(name: string) {
   return name.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
+type SmsFilter = "all" | "in" | "out";
+
+function SmsFilterControl({ value, onChange }: { value: SmsFilter; onChange: (v: SmsFilter) => void }) {
+  const options: { key: SmsFilter; label: string }[] = [
+    { key: "all", label: "Everyone" },
+    { key: "in", label: "Opted In" },
+    { key: "out", label: "Not Opted In" },
+  ];
+  return (
+    <div className="flex rounded border border-tan/30 overflow-hidden shrink-0">
+      {options.map((o, i) => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key)}
+          className={`font-body text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-4 sm:py-2 whitespace-nowrap transition-colors ${
+            value === o.key ? "bg-rust text-ivory" : "bg-white text-espresso hover:bg-ivory"
+          } ${i > 0 ? "border-l border-tan/30" : ""}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function matchesSmsFilter(c: Contact, filter: SmsFilter) {
+  if (filter === "in") return !c.sms_opted_out;
+  if (filter === "out") return c.sms_opted_out;
+  return true;
+}
+
+function OptInCell({ optedOut }: { optedOut: boolean }) {
+  return (
+    <span className={`font-body text-xs sm:text-sm font-medium ${optedOut ? "text-rust" : "text-espresso"}`}>
+      {optedOut ? "No" : "Yes"}
+    </span>
+  );
+}
+
 function MembersTab({
   contacts,
   onExport,
@@ -440,6 +479,7 @@ function MembersTab({
   onDelete: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [smsFilter, setSmsFilter] = useState<SmsFilter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
@@ -472,27 +512,32 @@ function MembersTab({
     setDeleting(null);
   }
 
-  const filtered = contacts.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      (c.phone ?? "").includes(q) ||
-      (c.ig_handle ?? "").toLowerCase().includes(q) ||
-      (c.referred_by ?? "").toLowerCase().includes(q)
-    );
-  });
+  const filtered = contacts
+    .filter((c) => matchesSmsFilter(c, smsFilter))
+    .filter((c) => {
+      const q = search.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.phone ?? "").includes(q) ||
+        (c.ig_handle ?? "").toLowerCase().includes(q) ||
+        (c.referred_by ?? "").toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, phone, Instagram…"
-          className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, phone, Instagram…"
+            className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+          />
+          <SmsFilterControl value={smsFilter} onChange={setSmsFilter} />
+        </div>
         <div className="flex items-center gap-4">
           <p className="font-body text-sm text-tan whitespace-nowrap">
             {filtered.length} of {contacts.length} {contacts.length === 1 ? "member" : "members"}
@@ -511,14 +556,16 @@ function MembersTab({
       {contacts.length === 0 ? (
         <p className="font-body text-base text-tan italic">No members yet.</p>
       ) : filtered.length === 0 ? (
-        <p className="font-body text-base text-tan italic">No results for "{search}".</p>
+        <p className="font-body text-base text-tan italic">
+          {search ? `No results for "${search}".` : "No members match this filter."}
+        </p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                {["Name", "Instagram", "Referred By", "Phone", "Email", "Notes", "Joined", ""].map((h) => (
-                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
+                {["Name", "Instagram", "Referred By", "Phone", "Email", "Opted In", "Notes", "Joined", ""].map((h, i) => (
+                  <th key={i} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
                     {h}
                   </th>
                 ))}
@@ -543,6 +590,9 @@ function MembersTab({
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.referred_by ?? "—"}</td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    <OptInCell optedOut={c.sms_opted_out} />
+                  </td>
                   <td className="py-3 px-3 sm:py-3.5 sm:px-4 min-w-[180px]">
                     <input
                       type="text"
@@ -579,6 +629,7 @@ function RejectedTab() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [smsFilter, setSmsFilter] = useState<SmsFilter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [approving, setApproving] = useState<string | null>(null);
 
@@ -611,29 +662,34 @@ function RejectedTab() {
       });
   }, []);
 
-  const filtered = contacts.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      (c.phone ?? "").includes(q) ||
-      (c.ig_handle ?? "").toLowerCase().includes(q) ||
-      (c.rejection_reason ?? "").toLowerCase().includes(q)
-    );
-  });
+  const filtered = contacts
+    .filter((c) => matchesSmsFilter(c, smsFilter))
+    .filter((c) => {
+      const q = search.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.phone ?? "").includes(q) ||
+        (c.ig_handle ?? "").toLowerCase().includes(q) ||
+        (c.rejection_reason ?? "").toLowerCase().includes(q)
+      );
+    });
 
   if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, phone, reason…"
-          className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
-        />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, phone, reason…"
+            className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+          />
+          <SmsFilterControl value={smsFilter} onChange={setSmsFilter} />
+        </div>
         <p className="font-body text-sm text-tan whitespace-nowrap">
           {filtered.length} of {contacts.length} {contacts.length === 1 ? "person" : "people"}
         </p>
@@ -642,14 +698,16 @@ function RejectedTab() {
       {contacts.length === 0 ? (
         <p className="font-body text-base text-tan italic">No rejected requests.</p>
       ) : filtered.length === 0 ? (
-        <p className="font-body text-base text-tan italic">No results for "{search}".</p>
+        <p className="font-body text-base text-tan italic">
+          {search ? `No results for "${search}".` : "No one matches this filter."}
+        </p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                {["Name", "Instagram", "Phone", "Email", "Reason", "Date", "", ""].map((h) => (
-                  <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
+                {["Name", "Instagram", "Phone", "Email", "Opted In", "Reason", "Date", "", ""].map((h, i) => (
+                  <th key={i} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
                     {h}
                   </th>
                 ))}
@@ -673,6 +731,9 @@ function RejectedTab() {
                   </td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    <OptInCell optedOut={c.sms_opted_out} />
+                  </td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center italic">
                     {c.rejection_reason ?? <span className="not-italic text-tan/40">—</span>}
                   </td>
