@@ -11,6 +11,8 @@ type FormState = {
   referred_by: string;
 };
 
+type SmsChoice = "yes" | "no" | null;
+
 export function AccessForm() {
   const { ref, inView } = useInView<HTMLElement>();
   const v = inView ? "in-view" : "";
@@ -48,6 +50,7 @@ export function AccessForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [smsChoice, setSmsChoice] = useState<SmsChoice>(null);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -56,12 +59,18 @@ export function AccessForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (smsChoice === null) {
+      setError("Please let us know if we can text you before submitting.");
+      return;
+    }
+
     setLoading(true);
 
     const res = await fetch("/api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, sms_opt_in: smsChoice === "yes" }),
     });
 
     setLoading(false);
@@ -186,13 +195,58 @@ export function AccessForm() {
               />
             </div>
 
+            <div className="space-y-2 pt-1">
+              <p className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                Can we text you?
+              </p>
+              <div className="flex gap-2" role="radiogroup" aria-label="SMS opt-in">
+                <label
+                  className={`flex-1 text-center rounded-sm border py-2 px-2 cursor-pointer transition-colors font-body text-[10px] tracking-[0.15em] uppercase ${
+                    smsChoice === "yes"
+                      ? "border-amber/70 bg-amber/10 text-cream/90"
+                      : "border-rust/25 text-cream/40 hover:border-rust/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="sms_opt_in"
+                    value="yes"
+                    checked={smsChoice === "yes"}
+                    onChange={() => setSmsChoice("yes")}
+                    className="sr-only"
+                  />
+                  Yes, text me
+                </label>
+                <label
+                  className={`flex-1 text-center rounded-sm border py-2 px-2 cursor-pointer transition-colors font-body text-[10px] tracking-[0.15em] uppercase ${
+                    smsChoice === "no"
+                      ? "border-amber/70 bg-amber/10 text-cream/90"
+                      : "border-rust/25 text-cream/40 hover:border-rust/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="sms_opt_in"
+                    value="no"
+                    checked={smsChoice === "no"}
+                    onChange={() => setSmsChoice("no")}
+                    className="sr-only"
+                  />
+                  No thanks
+                </label>
+              </div>
+              <p className="font-body text-[9px] tracking-[0.15em] text-cream/50 leading-relaxed">
+                This is how we notify you if you&apos;re approved and invite you to future events — without it, we won&apos;t be able to reach you.
+              </p>
+            </div>
+
             {error && (
               <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>
             )}
 
-            <p className="font-body text-[9px] tracking-[0.15em] text-cream/25 leading-relaxed">
-              By submitting, you agree to receive SMS updates about events from The View. Message and data rates may apply. Reply STOP to opt out. See our{" "}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-cream/50 transition-colors">
+            <p className="font-body text-[10px] tracking-[0.15em] text-cream/55 leading-relaxed">
+              Message and data rates may apply. Reply STOP to any text to opt out at any time. See our{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-cream/70 transition-colors">
                 Privacy Policy
               </a>.
             </p>

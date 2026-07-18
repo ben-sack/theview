@@ -9,6 +9,7 @@ export function middleware(request: NextRequest) {
     pathname === "/" ||
     pathname.startsWith("/coming-soon") ||
     pathname.startsWith("/api/unlock") ||
+    pathname.startsWith("/api/contact") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/keepalive") ||

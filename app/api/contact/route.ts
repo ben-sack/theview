@@ -13,10 +13,14 @@ function normalizePhone(raw: string): string {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, email, phone, ig_handle, referred_by } = body;
+  const { name, email, phone, ig_handle, referred_by, sms_opt_in } = body;
 
   if (!name || !email || !phone || !ig_handle) {
     return NextResponse.json({ error: "Please fill out all required fields." }, { status: 400 });
+  }
+
+  if (typeof sms_opt_in !== "boolean") {
+    return NextResponse.json({ error: "Please let us know if we can text you." }, { status: 400 });
   }
 
   const normalizedPhone = normalizePhone(phone);
@@ -40,6 +44,7 @@ export async function POST(req: NextRequest) {
       ig_handle,
       referred_by: referred_by || null,
       status: "pending",
+      sms_opted_out: !sms_opt_in,
     },
   ]);
 
