@@ -51,20 +51,13 @@ export function AccessForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [smsChoice, setSmsChoice] = useState<SmsChoice>(null);
+  const [showNoThanksModal, setShowNoThanksModal] = useState(false);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    if (smsChoice === null) {
-      setError("Please let us know if we can text you before submitting.");
-      return;
-    }
-
+  async function submitForm() {
     setLoading(true);
 
     const res = await fetch("/api/contact", {
@@ -82,6 +75,23 @@ export function AccessForm() {
     }
 
     router.push("/confirmed");
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (smsChoice === null) {
+      setError("Please let us know if we can text you before submitting.");
+      return;
+    }
+
+    if (smsChoice === "no") {
+      setShowNoThanksModal(true);
+      return;
+    }
+
+    await submitForm();
   }
 
   return (
@@ -278,6 +288,39 @@ export function AccessForm() {
         </div>
 
       </div>
+
+      {showNoThanksModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-black/70">
+          <div className="max-w-sm w-full bg-espresso border border-rust/25 rounded-lg p-6 space-y-4">
+            <p className="font-display italic text-cream/90 text-xl leading-snug">
+              Before you submit —
+            </p>
+            <p className="font-body text-sm text-cream/60 leading-relaxed">
+              Without text updates, we won&apos;t be able to notify you if you&apos;re approved or invite you to events. We likely won&apos;t be able to consider your request.
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowNoThanksModal(false)}
+                className="w-full font-body text-[10px] tracking-[0.3em] uppercase text-cream/90 bg-amber/20 border border-amber/40 rounded-sm py-2.5 hover:bg-amber/30 transition-colors"
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={async () => {
+                  setShowNoThanksModal(false);
+                  await submitForm();
+                }}
+                className="w-full font-body text-[10px] tracking-[0.2em] uppercase text-cream/35 hover:text-cream/60 transition-colors py-1 disabled:opacity-40"
+              >
+                {loading ? "Sending…" : "Submit without texts"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
