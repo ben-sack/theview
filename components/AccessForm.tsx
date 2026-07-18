@@ -101,13 +101,14 @@ export function AccessForm() {
       className="pt-14 pb-2 md:pt-10 md:pb-4 lg:pt-12 lg:pb-6 px-6 md:px-16 lg:px-24 border-t border-rust/10 flex-1 flex items-center"
       style={{ background: "rgba(20,4,7,0.45)" }}
     >
+      <div className="w-full max-w-lg md:max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 lg:gap-24 md:items-center">
       <div className="max-w-lg w-full">
 
         <p className={`hidden md:block font-body text-[10px] tracking-[0.36em] uppercase text-tan/60 mb-3 md:mb-2 reveal ${v}`}>
           Request Access
         </p>
 
-        <h2 className={`font-display text-2xl md:text-[2.75rem] text-ivory font-light leading-[1.2] mt-2 md:mt-0 mb-4 md:mb-6 reveal reveal-d1 ${v}`}>
+        <h2 className={`font-display text-2xl md:hidden text-ivory font-light leading-[1.2] mt-2 mb-4 reveal reveal-d1 ${v}`}>
           Let's see if it's
           <br />
           <span className="italic text-cream/50">a good fit.</span>
@@ -286,6 +287,16 @@ export function AccessForm() {
             Follow on Instagram
           </a>
         </div>
+
+      </div>
+
+      <div className={`hidden md:block reveal reveal-d1 ${v}`}>
+        <h2 className="font-display text-5xl lg:text-6xl xl:text-7xl text-ivory font-light leading-[1.15]">
+          Let's see if it's
+          <br />
+          <span className="italic text-cream/50">a good fit.</span>
+        </h2>
+      </div>
 
       </div>
 
