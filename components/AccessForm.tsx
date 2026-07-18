@@ -105,9 +105,7 @@ export function AccessForm() {
       <div className="max-w-lg w-full md:order-2">
 
         <h2 className={`font-display text-2xl md:hidden text-ivory font-light leading-[1.2] mt-2 mb-4 reveal reveal-d1 ${v}`}>
-          Let's see if it's
-          <br />
-          <span className="italic text-cream/50">a good fit.</span>
+          Let's see if it's <span className="italic text-cream/50">a good fit.</span>
         </h2>
 
         {submitted ? (
