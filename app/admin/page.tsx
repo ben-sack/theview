@@ -264,10 +264,36 @@ function PendingTab({
   onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
   onApproveAll: (contacts: Contact[]) => void;
 }) {
-  const [hideOptedOut, setHideOptedOut] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showOptedOut, setShowOptedOut] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
 
   const optedOutCount = contacts.filter((c) => c.sms_opted_out).length;
-  const visibleContacts = hideOptedOut ? contacts.filter((c) => !c.sms_opted_out) : contacts;
+
+  const filtered = contacts
+    .filter((c) => c.sms_opted_out === showOptedOut)
+    .filter((c) => {
+      const q = search.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.phone ?? "").includes(q) ||
+        (c.ig_handle ?? "").toLowerCase().includes(q) ||
+        (c.referred_by ?? "").toLowerCase().includes(q)
+      );
+    });
+
+  function startReject(id: string) {
+    setRejectingId(id);
+    setReason("");
+  }
+
+  function confirmReject(id: string) {
+    onUpdate(id, "rejected", reason);
+    setRejectingId(null);
+    setReason("");
+  }
 
   if (contacts.length === 0) {
     return <p className="font-body text-base text-tan italic">No pending requests.</p>;
@@ -275,44 +301,126 @@ function PendingTab({
 
   return (
     <div className="space-y-5">
-      {optedOutCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 bg-amber/10 border border-amber/30 rounded px-3 py-2">
-          <span className="font-body text-xs sm:text-sm text-espresso">
-            {hideOptedOut
-              ? `Hiding ${optedOutCount} ${optedOutCount === 1 ? "person" : "people"} who didn't opt in to texts.`
-              : `Showing ${optedOutCount} ${optedOutCount === 1 ? "person" : "people"} who didn't opt in to texts — they won't receive an approval text or be able to log in.`}
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone, Instagram…"
+          className="flex-1 sm:max-w-sm border border-tan/30 bg-white rounded px-4 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+        />
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setHideOptedOut((v) => !v)}
-            className="font-body text-xs sm:text-sm font-medium underline text-rust hover:text-rust/70 transition-colors"
+            onClick={() => setShowOptedOut((v) => !v)}
+            className={`font-body text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-4 sm:py-2 rounded border transition-colors whitespace-nowrap ${
+              showOptedOut
+                ? "bg-rust text-ivory border-rust"
+                : "text-espresso border-tan/40 hover:border-rust hover:text-rust"
+            }`}
           >
-            {hideOptedOut ? "Show them" : "Hide them"}
+            {showOptedOut ? `Showing not opted in (${optedOutCount})` : `Show not opted in (${optedOutCount})`}
           </button>
+          {!showOptedOut && filtered.length > 1 && (
+            <button
+              onClick={() => onApproveAll(filtered)}
+              className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 whitespace-nowrap"
+            >
+              Approve All ({filtered.length})
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
-      {visibleContacts.length === 0 ? (
+      {filtered.length === 0 ? (
         <p className="font-body text-base text-tan italic">
-          No pending requests match this filter.
+          {search
+            ? `No results for "${search}".`
+            : showOptedOut
+            ? "No one has declined texts."
+            : "No pending requests have opted in to texts."}
         </p>
       ) : (
-        <>
-          {visibleContacts.length > 1 && (
-            <div className="flex justify-end">
-              <button
-                onClick={() => onApproveAll(visibleContacts)}
-                className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
-              >
-                Approve All ({visibleContacts.length})
-              </button>
-            </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
-            {visibleContacts.map((c) => (
-              <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
-            ))}
-          </div>
-        </>
+        <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
+                {["", "Name", "Instagram", "Referred By", "Phone", "Email", "Joined", ""].map((h, i) => (
+                  <th key={i} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    <button
+                      onClick={() => onUpdate(c.id, "approved")}
+                      className="font-body text-xs font-medium text-tan/50 hover:text-espresso transition-colors whitespace-nowrap"
+                    >
+                      Approve
+                    </button>
+                  </td>
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-3 px-3 sm:py-3.5 sm:px-4 text-center">{capitalizeName(c.name)}</td>
+                  <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    {c.ig_handle ? (
+                      <a
+                        href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber hover:text-rust transition-colors"
+                      >
+                        {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.referred_by ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
+                  <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                    {formatDateShort(c.created_at)}
+                  </td>
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    {rejectingId === c.id ? (
+                      <div className="flex flex-col gap-1.5 items-center min-w-[140px]">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="Reason (optional)"
+                          className="w-full border border-tan/30 rounded px-2 py-1 text-xs text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => confirmReject(c.id)}
+                            className="font-body text-xs font-medium text-rust hover:text-rust/70 transition-colors"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(null)}
+                            className="font-body text-xs text-tan/50 hover:text-espresso transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startReject(c.id)}
+                        className="font-body text-xs text-tan/50 hover:text-rust transition-colors whitespace-nowrap"
+                      >
+                        Reject
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -320,98 +428,6 @@ function PendingTab({
 
 function capitalizeName(name: string) {
   return name.replace(/\b\w/g, (ch) => ch.toUpperCase());
-}
-
-function PendingCard({
-  contact: c,
-  onUpdate,
-}: {
-  contact: Contact;
-  onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
-}) {
-  const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState("");
-
-  return (
-    <div className="bg-white border border-tan/25 rounded-lg pt-2 px-3 pb-3 sm:pt-3 sm:px-5 sm:pb-5 flex flex-col gap-1 sm:gap-2 shadow-sm">
-      <div className="space-y-0.5">
-        {c.sms_opted_out && (
-          <p className="font-body text-[10px] sm:text-xs font-medium uppercase tracking-wide text-rust">
-            Didn&apos;t opt in to texts
-          </p>
-        )}
-        <div className="grid grid-cols-2 gap-x-3 items-baseline">
-          <p className="min-w-0 font-display text-xl sm:text-2xl text-espresso font-semibold truncate">{capitalizeName(c.name)}</p>
-          {c.ig_handle && (
-            <a
-              href={`https://instagram.com/${c.ig_handle.replace(/^@/, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-w-0 text-right truncate font-body text-[11px] sm:text-sm text-amber hover:text-rust transition-colors"
-            >
-              {c.ig_handle.startsWith("@") ? c.ig_handle : `@${c.ig_handle}`}
-            </a>
-          )}
-        </div>
-
-        {(c.email || c.phone) && (
-          <div className="grid grid-cols-2 gap-x-3 items-baseline font-body text-[11px] sm:text-sm">
-            {c.email && <p className="min-w-0 text-espresso truncate">{c.email}</p>}
-            {c.phone && <p className="min-w-0 text-right text-espresso truncate">{c.phone}</p>}
-          </div>
-        )}
-
-        {(c.occupation || c.referred_by) && (
-          <div className="grid grid-cols-2 gap-x-3 items-baseline font-body text-[11px] sm:text-sm">
-            {c.occupation && <p className="min-w-0 text-tan truncate">{c.occupation}</p>}
-            {c.referred_by && <p className="min-w-0 text-right text-tan truncate">via {c.referred_by}</p>}
-          </div>
-        )}
-      </div>
-
-      {rejecting ? (
-        <div className="space-y-1.5 sm:space-y-2 mt-auto pt-1">
-          <input
-            autoFocus
-            type="text"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason (optional)"
-            className="w-full border border-tan/30 rounded px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => onUpdate(c.id, "rejected", reason)}
-              className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2 bg-rust text-ivory rounded hover:bg-rust/80 transition-colors"
-            >
-              Confirm Reject
-            </button>
-            <button
-              onClick={() => { setRejecting(false); setReason(""); }}
-              className="font-body text-xs sm:text-sm px-4 py-1.5 sm:py-2 border border-tan/30 text-tan rounded hover:text-espresso transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-3 mt-auto pt-1">
-          <button
-            onClick={() => onUpdate(c.id, "approved")}
-            className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => setRejecting(true)}
-            className="flex-1 font-body text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 bg-white text-rust border border-rust/40 rounded hover:bg-rust/5 transition-colors duration-200"
-          >
-            Reject
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function MembersTab({
