@@ -14,6 +14,7 @@ type Contact = {
   notes: string | null;
   status: string;
   created_at: string;
+  sms_opted_out: boolean;
 };
 
 type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals" | "settings";
@@ -92,17 +93,18 @@ export default function AdminPage() {
     else fetchPendingCount();
   }
 
-  async function approveAll() {
-    if (!confirm(`Approve all ${contacts.length} pending requests? This will send a welcome text to each person.`)) return;
-    for (const c of contacts) {
+  async function approveAll(contactsToApprove: Contact[]) {
+    if (!confirm(`Approve all ${contactsToApprove.length} pending requests? This will send a welcome text to each person.`)) return;
+    for (const c of contactsToApprove) {
       await fetch(`/api/admin/contacts/${c.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "approved" }),
       });
     }
-    setContacts([]);
-    setPendingCount(0);
+    const approvedIds = new Set(contactsToApprove.map((c) => c.id));
+    setContacts((prev) => prev.filter((c) => !approvedIds.has(c.id)));
+    setPendingCount((n) => Math.max(0, n - contactsToApprove.length));
   }
 
   function exportCSV() {
@@ -260,29 +262,58 @@ function PendingTab({
 }: {
   contacts: Contact[];
   onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
-  onApproveAll: () => void;
+  onApproveAll: (contacts: Contact[]) => void;
 }) {
+  const [hideOptedOut, setHideOptedOut] = useState(true);
+
+  const optedOutCount = contacts.filter((c) => c.sms_opted_out).length;
+  const visibleContacts = hideOptedOut ? contacts.filter((c) => !c.sms_opted_out) : contacts;
+
   if (contacts.length === 0) {
     return <p className="font-body text-base text-tan italic">No pending requests.</p>;
   }
 
   return (
     <div className="space-y-5">
-      {contacts.length > 1 && (
-        <div className="flex justify-end">
+      {optedOutCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 bg-amber/10 border border-amber/30 rounded px-3 py-2">
+          <span className="font-body text-xs sm:text-sm text-espresso">
+            {hideOptedOut
+              ? `Hiding ${optedOutCount} ${optedOutCount === 1 ? "person" : "people"} who didn't opt in to texts.`
+              : `Showing ${optedOutCount} ${optedOutCount === 1 ? "person" : "people"} who didn't opt in to texts — they won't receive an approval text or be able to log in.`}
+          </span>
           <button
-            onClick={onApproveAll}
-            className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+            onClick={() => setHideOptedOut((v) => !v)}
+            className="font-body text-xs sm:text-sm font-medium underline text-rust hover:text-rust/70 transition-colors"
           >
-            Approve All ({contacts.length})
+            {hideOptedOut ? "Show them" : "Hide them"}
           </button>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
-        {contacts.map((c) => (
-          <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
-        ))}
-      </div>
+
+      {visibleContacts.length === 0 ? (
+        <p className="font-body text-base text-tan italic">
+          No pending requests match this filter.
+        </p>
+      ) : (
+        <>
+          {visibleContacts.length > 1 && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => onApproveAll(visibleContacts)}
+                className="font-body text-sm font-medium px-5 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200"
+              >
+                Approve All ({visibleContacts.length})
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
+            {visibleContacts.map((c) => (
+              <PendingCard key={c.id} contact={c} onUpdate={onUpdate} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -304,6 +335,11 @@ function PendingCard({
   return (
     <div className="bg-white border border-tan/25 rounded-lg pt-2 px-3 pb-3 sm:pt-3 sm:px-5 sm:pb-5 flex flex-col gap-1 sm:gap-2 shadow-sm">
       <div className="space-y-0.5">
+        {c.sms_opted_out && (
+          <p className="font-body text-[10px] sm:text-xs font-medium uppercase tracking-wide text-rust">
+            Didn&apos;t opt in to texts
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-x-3 items-baseline">
           <p className="min-w-0 font-display text-xl sm:text-2xl text-espresso font-semibold truncate">{capitalizeName(c.name)}</p>
           {c.ig_handle && (
