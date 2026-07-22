@@ -62,7 +62,7 @@ export function Nav() {
           </a>
         </nav>
 
-        <p className="hidden md:block font-display italic text-[11px] text-tan/35 normal-case tracking-normal select-none">
+        <p className="hidden md:block font-display italic text-[17px] text-tan/35 normal-case tracking-normal select-none">
           A private, invitation-based event community based in Los Angeles.
         </p>
       </div>
