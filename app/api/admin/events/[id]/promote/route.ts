@@ -51,7 +51,7 @@ export async function POST(
       });
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({
-        body: `Good news, ${firstName}! A spot just opened up for ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. You're officially on the list - see you there.\n\nReply STOP to opt out`,
+        body: `Good news, ${firstName}! A spot just opened up at The View for ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. You're officially on the list - see you there.\n\nReply STOP to opt out`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone,
       });
