@@ -47,7 +47,7 @@ export function HowAccess() {
           </div>
 
           <p className={`mt-6 font-body text-[10px] tracking-[0.2em] text-cream/30 leading-relaxed reveal reveal-d4 ${v}`}>
-            The View is a private, invitation-based event community in Los Angeles.
+            The View is a private, invitation-based event community based in Los Angeles.
           </p>
         </div>
 
