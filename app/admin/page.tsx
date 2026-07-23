@@ -1050,7 +1050,7 @@ function EventsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
+                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Attendees", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
                     <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
                   ))}
                 </tr>
@@ -1067,6 +1067,7 @@ function EventsTab() {
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.location ?? "—"}</td>
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.partners ?? "—"}</td>
                     <td className="font-body text-xs sm:text-sm text-espresso font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.rsvp_count}</td>
+                    <td className="font-body text-xs sm:text-sm text-espresso font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.checked_in_count ?? 0}</td>
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.capacity}</td>
                     <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       {ev.waitlist_count > 0
