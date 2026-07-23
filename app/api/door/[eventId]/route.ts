@@ -27,15 +27,15 @@ export async function GET(
 
   const { data: rsvps, error } = await supabase
     .from("rsvps")
-    .select("id, party_size, checked_in, checked_in_at, contacts(name, ig_handle)")
+    .select("id, party_size, checked_in, checked_in_at, guest_name, contacts(name, ig_handle)")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const sorted = (rsvps ?? []).sort((a, b) => {
-    const nameA = (Array.isArray(a.contacts) ? a.contacts[0] : a.contacts)?.name ?? "";
-    const nameB = (Array.isArray(b.contacts) ? b.contacts[0] : b.contacts)?.name ?? "";
+    const nameA = (Array.isArray(a.contacts) ? a.contacts[0] : a.contacts)?.name ?? a.guest_name ?? "";
+    const nameB = (Array.isArray(b.contacts) ? b.contacts[0] : b.contacts)?.name ?? b.guest_name ?? "";
     return nameA.localeCompare(nameB);
   });
 

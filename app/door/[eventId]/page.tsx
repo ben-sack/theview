@@ -9,7 +9,8 @@ type Rsvp = {
   party_size: number;
   checked_in: boolean;
   checked_in_at: string | null;
-  contacts: Contact | Contact[];
+  guest_name: string | null;
+  contacts: Contact | Contact[] | null;
 };
 
 type Event = {
@@ -28,6 +29,9 @@ export default function DoorCheckinPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [toggling, setToggling] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newGuestName, setNewGuestName] = useState("");
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     fetch(`/api/door/${eventId}`)
@@ -43,8 +47,27 @@ export default function DoorCheckinPage() {
       });
   }, [eventId, router]);
 
-  function getContact(rsvp: Rsvp): Contact {
-    return Array.isArray(rsvp.contacts) ? rsvp.contacts[0] : rsvp.contacts;
+  function getDisplayInfo(rsvp: Rsvp): { name: string; handle: string | null } {
+    const contact = Array.isArray(rsvp.contacts) ? rsvp.contacts[0] : rsvp.contacts;
+    return { name: contact?.name ?? rsvp.guest_name ?? "Guest", handle: contact?.ig_handle ?? null };
+  }
+
+  async function addGuest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newGuestName.trim() || adding) return;
+    setAdding(true);
+    const res = await fetch(`/api/door/${eventId}/add-guest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newGuestName.trim() }),
+    });
+    if (res.ok) {
+      const { rsvp } = await res.json();
+      setRsvps((prev) => [...prev, rsvp]);
+      setNewGuestName("");
+      setShowAddForm(false);
+    }
+    setAdding(false);
   }
 
   async function toggleCheckin(rsvp: Rsvp) {
@@ -70,10 +93,10 @@ export default function DoorCheckinPage() {
     const q = search.trim().toLowerCase();
     if (!q) return rsvps;
     return rsvps.filter((r) => {
-      const c = getContact(r);
+      const { name, handle } = getDisplayInfo(r);
       return (
-        c.name.toLowerCase().includes(q) ||
-        (c.ig_handle ?? "").toLowerCase().includes(q)
+        name.toLowerCase().includes(q) ||
+        (handle ?? "").toLowerCase().includes(q)
       );
     });
   }, [rsvps, search]);
@@ -134,15 +157,44 @@ export default function DoorCheckinPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-6 py-3 border-b border-tan/20 shrink-0">
-        <input
-          type="text"
-          placeholder="Search by name or @handle…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-tan/10 border border-tan/20 rounded px-4 py-3 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust"
-        />
+      {/* Search + Add */}
+      <div className="px-6 py-3 border-b border-tan/20 shrink-0 space-y-3">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search by name or @handle…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-0 bg-tan/10 border border-tan/20 rounded px-4 py-3 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust"
+          />
+          <button
+            type="button"
+            onClick={() => setShowAddForm((v) => !v)}
+            className="shrink-0 px-4 py-3 bg-tan/10 border border-tan/20 rounded font-body text-sm text-tan hover:text-ivory hover:border-tan/40 transition-colors"
+          >
+            {showAddForm ? "Cancel" : "+ Add"}
+          </button>
+        </div>
+
+        {showAddForm && (
+          <form onSubmit={addGuest} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Guest name"
+              value={newGuestName}
+              onChange={(e) => setNewGuestName(e.target.value)}
+              autoFocus
+              className="flex-1 min-w-0 bg-tan/10 border border-tan/20 rounded px-4 py-3 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust"
+            />
+            <button
+              type="submit"
+              disabled={adding || !newGuestName.trim()}
+              className="shrink-0 px-4 py-3 bg-rust text-ivory rounded font-body text-sm hover:bg-rust/80 transition-colors disabled:opacity-40"
+            >
+              {adding ? "…" : "Add"}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Guest list */}
@@ -152,7 +204,7 @@ export default function DoorCheckinPage() {
         ) : (
           <div className="divide-y divide-tan/10">
             {filtered.map((rsvp) => {
-              const contact = getContact(rsvp);
+              const { name, handle } = getDisplayInfo(rsvp);
               const checkedIn = rsvp.checked_in;
               return (
                 <button
@@ -181,11 +233,11 @@ export default function DoorCheckinPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className={`font-body text-base font-medium truncate ${checkedIn ? "text-green-300" : "text-ivory"}`}>
-                      {contact.name}
+                      {name}
                     </p>
-                    {contact.ig_handle && (
+                    {handle && (
                       <p className={`font-body text-sm truncate ${checkedIn ? "text-green-500/70" : "text-tan"}`}>
-                        @{contact.ig_handle.replace(/^@/, "")}
+                        @{handle.replace(/^@/, "")}
                       </p>
                     )}
                     {checkedIn && rsvp.checked_in_at && (

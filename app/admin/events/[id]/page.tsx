@@ -17,12 +17,13 @@ type Rsvp = {
   party_size: number;
   checked_in: boolean;
   created_at: string;
+  guest_name: string | null;
   contacts: {
     name: string;
     email: string;
     phone: string | null;
     ig_handle: string | null;
-  };
+  } | null;
 };
 
 type WaitlistEntry = {
@@ -190,12 +191,12 @@ export default function EventDetailPage() {
             {rsvps.map((r) => (
               <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts.name}</p>
+                  <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts?.name ?? r.guest_name ?? "Guest"}</p>
                   {r.party_size > 1 && (
                     <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
                   )}
                 </div>
-                <p className="font-body text-xs text-tan truncate">{r.contacts.ig_handle ?? r.contacts.email}</p>
+                <p className="font-body text-xs text-tan truncate">{r.contacts ? (r.contacts.ig_handle ?? r.contacts.email) : "Walk-in (door add)"}</p>
                 <p className="font-body text-xs text-tan/50 mt-0.5">
                   {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </p>
