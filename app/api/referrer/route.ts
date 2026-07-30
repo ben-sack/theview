@@ -11,6 +11,5 @@ export async function GET(req: NextRequest) {
     .eq("id", id)
     .single();
 
-  const firstName = data?.name?.split(" ")[0] ?? null;
-  return NextResponse.json({ name: firstName });
+  return NextResponse.json({ name: data?.name ?? null });
 }
