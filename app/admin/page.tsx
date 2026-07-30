@@ -1360,10 +1360,19 @@ function SettingsTab() {
   const [portalEnabled, setPortalEnabled] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [inviteTemplate, setInviteTemplate] = useState("");
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteSaved, setInviteSaved] = useState(false);
+
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((d) => setPortalEnabled(d.members_portal_enabled === "true"));
+      .then((d) => {
+        setPortalEnabled(d.members_portal_enabled === "true");
+        setInviteTemplate(
+          d.invite_sms_template ?? "You should apply for The View — a members-only night out. {link}"
+        );
+      });
   }, []);
 
   async function togglePortal() {
@@ -1377,6 +1386,18 @@ function SettingsTab() {
     });
     setPortalEnabled(newVal);
     setSaving(false);
+  }
+
+  async function saveInviteTemplate() {
+    setInviteSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "invite_sms_template", value: inviteTemplate }),
+    });
+    setInviteSaving(false);
+    setInviteSaved(true);
+    setTimeout(() => setInviteSaved(false), 3000);
   }
 
   return (
@@ -1406,6 +1427,36 @@ function SettingsTab() {
         <p className={`font-body text-xs font-medium ${portalEnabled ? "text-green-600" : "text-tan/50"}`}>
           {portalEnabled === null ? "Loading…" : portalEnabled ? "Portal is live" : "Portal is off"}
         </p>
+      </div>
+
+      <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+        <div className="space-y-1">
+          <p className="font-body text-sm font-medium text-espresso">Invite a Friend Text</p>
+          <p className="font-body text-xs text-tan leading-relaxed">
+            After someone requests access, they can tap "Invite a Friend" to open their texting app with this message pre-filled. Use{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{link}"}</span>{" "}
+            to include their personal referral link.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <textarea
+            value={inviteTemplate}
+            onChange={(e) => setInviteTemplate(e.target.value)}
+            rows={4}
+            placeholder="You should apply for The View — a members-only night out. {link}"
+            className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
+          />
+          <p className="font-body text-xs text-tan">{inviteTemplate.length} characters</p>
+        </div>
+
+        <button
+          onClick={saveInviteTemplate}
+          disabled={inviteSaving}
+          className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+        >
+          {inviteSaving ? "Saving…" : inviteSaved ? "Saved ✓" : "Save Message"}
+        </button>
       </div>
     </div>
   );

@@ -36,22 +36,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "We already have your information on file." }, { status: 409 });
   }
 
-  const { error } = await supabase.from("contacts").insert([
-    {
-      name,
-      email,
-      phone: normalizedPhone,
-      ig_handle,
-      referred_by: referred_by || null,
-      status: "pending",
-      sms_opted_out: !sms_opt_in,
-    },
-  ]);
+  const { data, error } = await supabase
+    .from("contacts")
+    .insert([
+      {
+        name,
+        email,
+        phone: normalizedPhone,
+        ig_handle,
+        referred_by: referred_by || null,
+        status: "pending",
+        sms_opted_out: !sms_opt_in,
+      },
+    ])
+    .select("id")
+    .single();
 
   if (error) {
     console.error("Supabase insert error:", error);
     return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, id: data.id });
 }

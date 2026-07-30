@@ -68,13 +68,14 @@ export function AccessForm() {
 
     setLoading(false);
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error || "Something went wrong. Please try again.");
       return;
     }
 
-    router.push("/confirmed");
+    router.push(data.id ? `/confirmed?id=${data.id}` : "/confirmed");
   }
 
   async function onSubmit(e: React.FormEvent) {
