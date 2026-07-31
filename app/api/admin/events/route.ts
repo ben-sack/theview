@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { title, date, capacity, location, partners, allow_guests } = await req.json();
+  const { title, date, end_time, capacity, location, partners, allow_guests } = await req.json();
 
   if (!title || !date || !capacity) {
     return NextResponse.json({ error: "Title, date, and capacity are required." }, { status: 400 });
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("events")
-    .insert([{ title, date, capacity, location, partners, allow_guests: allow_guests ?? false }])
+    .insert([{ title, date, end_time: end_time || null, capacity, location, partners, allow_guests: allow_guests ?? false }])
     .select()
     .single();
 

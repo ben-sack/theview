@@ -7,6 +7,7 @@ type Event = {
   id: string;
   title: string;
   date: string;
+  end_time: string | null;
   location: string | null;
   partners: string | null;
   capacity: number;
@@ -74,7 +75,7 @@ export default function RsvpPage() {
   function googleCalendarLink() {
     if (!event) return "";
     const start = new Date(event.date);
-    const end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
+    const end = event.end_time ? new Date(event.end_time) : new Date(start.getTime() + 4 * 60 * 60 * 1000);
     const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
     const params = new URLSearchParams({

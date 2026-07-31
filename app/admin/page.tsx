@@ -772,6 +772,7 @@ type AdminEvent = {
   id: string;
   title: string;
   date: string;
+  end_time: string | null;
   capacity: number;
   location: string | null;
   partners: string | null;
@@ -789,15 +790,23 @@ function formatDateShort(date: string | Date) {
   return `${mm}/${dd}/${yy}`;
 }
 
+function formatTime(date: string | Date) {
+  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatTimeRange(start: string, end: string | null) {
+  return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);
+}
+
 function EventsTab() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [form, setForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
   const [saving, setSaving] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [editForm, setEditForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
   const [editSaving, setEditSaving] = useState(false);
 
   function loadEvents() {
@@ -816,7 +825,7 @@ function EventsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, capacity: parseInt(form.capacity) }),
     });
-    setForm({ title: "", date: "", capacity: "", location: "", partners: "", allow_guests: false });
+    setForm({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
     setAdding(false);
     setSaving(false);
     loadEvents();
@@ -829,13 +838,17 @@ function EventsTab() {
     setDeleting(null);
   }
 
-  function openEdit(ev: AdminEvent) {
-    const localDate = new Date(ev.date);
+  function toLocalIso(date: string | Date) {
+    const d = new Date(date);
     const pad = (n: number) => String(n).padStart(2, "0");
-    const localIso = `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}T${pad(localDate.getHours())}:${pad(localDate.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openEdit(ev: AdminEvent) {
     setEditForm({
       title: ev.title,
-      date: localIso,
+      date: toLocalIso(ev.date),
+      end_time: ev.end_time ? toLocalIso(ev.end_time) : "",
       capacity: String(ev.capacity),
       location: ev.location ?? "",
       partners: ev.partners ?? "",
@@ -882,12 +895,21 @@ function EventsTab() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-body text-xs tracking-widest uppercase text-tan">Date *</label>
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Start Time *</label>
                   <input
                     required
                     type="datetime-local"
                     value={editForm.date}
                     onChange={(e) => setEditForm((p) => ({ ...p, date: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">End Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editForm.end_time}
+                    onChange={(e) => setEditForm((p) => ({ ...p, end_time: e.target.value }))}
                     className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
                   />
                 </div>
@@ -976,12 +998,21 @@ function EventsTab() {
               />
             </div>
             <div className="space-y-1">
-              <label className="font-body text-xs tracking-widest uppercase text-tan">Date *</label>
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Start Time *</label>
               <input
                 required
                 type="datetime-local"
                 value={form.date}
                 onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">End Time</label>
+              <input
+                type="datetime-local"
+                value={form.end_time}
+                onChange={(e) => setForm((p) => ({ ...p, end_time: e.target.value }))}
                 className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
               />
             </div>
@@ -1050,7 +1081,7 @@ function EventsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                  {["Event", "Date", "Location", "Partner(s)", "RSVPs", "Attendees", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
+                  {["Event", "Date", "Time", "Location", "Partner(s)", "RSVPs", "Attendees", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
                     <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
                   ))}
                 </tr>
@@ -1063,6 +1094,9 @@ function EventsTab() {
                     </td>
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
                       {formatDateShort(ev.date)}
+                    </td>
+                    <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                      {formatTimeRange(ev.date, ev.end_time)}
                     </td>
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.location ?? "—"}</td>
                     <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{ev.partners ?? "—"}</td>
