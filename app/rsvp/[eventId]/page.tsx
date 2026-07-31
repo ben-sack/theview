@@ -34,6 +34,7 @@ export default function RsvpPage() {
         setRsvpCount(d.rsvp_count);
         setWaitlistCount(d.waitlist_count ?? 0);
         if (d.already_waitlisted) setState("already_waitlisted");
+        else if (d.already_rsvped) setState("confirmed");
         else setState("ready");
       })
       .catch(() => { setState("error"); setErrorMsg("Something went wrong."); });

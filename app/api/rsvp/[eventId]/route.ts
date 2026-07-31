@@ -29,6 +29,7 @@ export async function GET(
     .eq("event_id", eventId);
 
   let alreadyWaitlisted = false;
+  let alreadyRsvped = false;
   if (contactId) {
     const { data: wl } = await supabase
       .from("waitlist")
@@ -37,6 +38,14 @@ export async function GET(
       .eq("contact_id", contactId)
       .single();
     alreadyWaitlisted = !!wl;
+
+    const { data: existingRsvp } = await supabase
+      .from("rsvps")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("contact_id", contactId)
+      .single();
+    alreadyRsvped = !!existingRsvp;
   }
 
   return NextResponse.json({
@@ -44,6 +53,7 @@ export async function GET(
     rsvp_count: rsvpCount ?? 0,
     waitlist_count: waitlistCount ?? 0,
     already_waitlisted: alreadyWaitlisted,
+    already_rsvped: alreadyRsvped,
   });
 }
 
@@ -76,6 +86,17 @@ export async function POST(
 
   if (eventError || !event) {
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  const { data: existingRsvp } = await supabase
+    .from("rsvps")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("contact_id", contact_id)
+    .single();
+
+  if (existingRsvp) {
+    return NextResponse.json({ success: true, name: contact.name });
   }
 
   const { count: currentRsvps } = await supabase
