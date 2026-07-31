@@ -192,6 +192,7 @@ export default function RsvpPage() {
 
             <a
               href={calendarLink()}
+              download={event ? `${event.title}.ics` : "event.ics"}
               className="block w-full bg-ivory text-espresso font-body text-sm font-medium tracking-widest uppercase py-4 rounded hover:bg-cream transition-colors duration-200 text-center"
             >
               Add to Calendar
