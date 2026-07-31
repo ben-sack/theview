@@ -24,6 +24,19 @@ export default function RsvpPage() {
   const [state, setState] = useState<"loading" | "ready" | "submitting" | "confirmed" | "waitlisted" | "already_waitlisted" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const [waitlistCount, setWaitlistCount] = useState(0);
+  const [inviteSmsHref, setInviteSmsHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!contactId) return;
+    fetch("/api/invite-template")
+      .then((r) => r.json())
+      .then((d) => {
+        const siteUrl = window.location.origin;
+        const referralLink = `${siteUrl}/?ref=${contactId}`;
+        const message = (d.template || "").replace(/\{link\}/g, referralLink);
+        setInviteSmsHref(`sms:?&body=${encodeURIComponent(message)}`);
+      });
+  }, [contactId]);
 
   useEffect(() => {
     fetch(`/api/rsvp/${eventId}${contactId ? `?c=${contactId}` : ""}`)
@@ -58,32 +71,21 @@ export default function RsvpPage() {
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : "";
 
-  const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://theview.la";
-  const referralLink = `${siteUrl}/?ref=${contactId}`;
-
-  function calendarLink() {
+  function googleCalendarLink() {
     if (!event) return "";
     const start = new Date(event.date);
     const end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
-    const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
-    const lines = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//The View//RSVP//EN",
-      "BEGIN:VEVENT",
-      `UID:${event.id}@theview.la`,
-      `DTSTAMP:${formatIcsDate(new Date())}`,
-      `DTSTART:${formatIcsDate(start)}`,
-      `DTEND:${formatIcsDate(end)}`,
-      `SUMMARY:${event.title}`,
-      event.location ? `LOCATION:${event.location}` : "",
-      "DESCRIPTION:See you there — The View",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].filter(Boolean).join("\r\n");
+    const params = new URLSearchParams({
+      action: "TEMPLATE",
+      text: event.title,
+      dates: `${formatDate(start)}/${formatDate(end)}`,
+      details: "See you there — The View",
+    });
+    if (event.location) params.set("location", event.location);
 
-    return `data:text/calendar;charset=utf8,${encodeURIComponent(lines)}`;
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
 
   return (
@@ -191,26 +193,27 @@ export default function RsvpPage() {
             </div>
 
             <a
-              href={calendarLink()}
-              download={event ? `${event.title}.ics` : "event.ics"}
+              href={googleCalendarLink()}
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full bg-ivory text-espresso font-body text-sm font-medium tracking-widest uppercase py-4 rounded hover:bg-cream transition-colors duration-200 text-center"
             >
-              Add to Calendar
+              Add to Google Calendar
             </a>
 
-            <div className="border-t border-rust/15 pt-6 space-y-3">
-              <p className="font-body text-xs text-tan/50 leading-relaxed">
-                Know someone who should be here? They can apply using this link — we'll take note of your referral!
-              </p>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(referralLink);
-                }}
-                className="w-full border border-tan/25 text-tan/60 hover:text-cream/70 hover:border-tan/40 font-body text-xs tracking-widest uppercase py-3 rounded transition-colors duration-200"
-              >
-                Copy Referral Link
-              </button>
-            </div>
+            {inviteSmsHref && (
+              <div className="border-t border-rust/15 pt-6 space-y-3">
+                <p className="font-body text-xs text-tan/50 leading-relaxed">
+                  Know someone who should be here? Invite them — we'll take note of your referral!
+                </p>
+                <a
+                  href={inviteSmsHref}
+                  className="block w-full border border-tan/25 text-tan/60 hover:text-cream/70 hover:border-tan/40 font-body text-xs tracking-widest uppercase py-3 rounded transition-colors duration-200"
+                >
+                  Invite a Friend
+                </a>
+              </div>
+            )}
           </div>
         )}
 
