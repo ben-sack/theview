@@ -60,6 +60,31 @@ export default function RsvpPage() {
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://theview.la";
   const referralLink = `${siteUrl}/?ref=${contactId}`;
 
+  function calendarLink() {
+    if (!event) return "";
+    const start = new Date(event.date);
+    const end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
+    const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//The View//RSVP//EN",
+      "BEGIN:VEVENT",
+      `UID:${event.id}@theview.la`,
+      `DTSTAMP:${formatIcsDate(new Date())}`,
+      `DTSTART:${formatIcsDate(start)}`,
+      `DTEND:${formatIcsDate(end)}`,
+      `SUMMARY:${event.title}`,
+      event.location ? `LOCATION:${event.location}` : "",
+      "DESCRIPTION:See you there — The View",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+
+    return `data:text/calendar;charset=utf8,${encodeURIComponent(lines)}`;
+  }
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-svh bg-oxblood overflow-hidden px-6">
       <div
@@ -163,6 +188,13 @@ export default function RsvpPage() {
                 We'll be in touch with more details as the date approaches.
               </p>
             </div>
+
+            <a
+              href={calendarLink()}
+              className="block w-full bg-ivory text-espresso font-body text-sm font-medium tracking-widest uppercase py-4 rounded hover:bg-cream transition-colors duration-200 text-center"
+            >
+              Add to Calendar
+            </a>
 
             <div className="border-t border-rust/15 pt-6 space-y-3">
               <p className="font-body text-xs text-tan/50 leading-relaxed">
