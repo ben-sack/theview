@@ -19,6 +19,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/door") ||
     pathname.startsWith("/api/door") ||
     pathname.startsWith("/api/referrer") ||
+    pathname.startsWith("/api/invite-template") ||
     pathname.startsWith("/members") ||
     pathname.startsWith("/api/members") ||
     pathname.startsWith("/privacy") ||
