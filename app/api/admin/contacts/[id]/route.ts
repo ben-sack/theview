@@ -99,6 +99,29 @@ export async function DELETE(
 
   const { id } = await params;
 
+  const { data: deletedContact } = await supabase
+    .from("contacts")
+    .select("name")
+    .eq("id", id)
+    .single();
+
+  if (deletedContact?.name) {
+    const nameKey = deletedContact.name.trim().toLowerCase();
+
+    const { data: referredContacts } = await supabase
+      .from("contacts")
+      .select("id, referred_by")
+      .not("referred_by", "is", null);
+
+    const matchingIds = (referredContacts ?? [])
+      .filter((c) => c.referred_by?.trim().toLowerCase() === nameKey)
+      .map((c) => c.id);
+
+    if (matchingIds.length > 0) {
+      await supabase.from("contacts").update({ referred_by: null }).in("id", matchingIds);
+    }
+  }
+
   const { error } = await supabase.from("contacts").delete().eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
