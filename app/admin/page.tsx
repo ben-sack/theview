@@ -817,13 +817,22 @@ function EventsTab() {
 
   useEffect(() => { loadEvents(); }, []);
 
+  function toUtcIso(localValue: string) {
+    return localValue ? new Date(localValue).toISOString() : null;
+  }
+
   async function addEvent(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     await fetch("/api/admin/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, capacity: parseInt(form.capacity) }),
+      body: JSON.stringify({
+        ...form,
+        date: toUtcIso(form.date),
+        end_time: toUtcIso(form.end_time),
+        capacity: parseInt(form.capacity),
+      }),
     });
     setForm({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
     setAdding(false);
@@ -864,7 +873,12 @@ function EventsTab() {
     await fetch(`/api/admin/events/${editingEvent.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...editForm, capacity: parseInt(editForm.capacity) }),
+      body: JSON.stringify({
+        ...editForm,
+        date: toUtcIso(editForm.date),
+        end_time: toUtcIso(editForm.end_time),
+        capacity: parseInt(editForm.capacity),
+      }),
     });
     setEditSaving(false);
     setEditingEvent(null);
