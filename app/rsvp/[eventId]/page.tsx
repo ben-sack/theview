@@ -112,7 +112,7 @@ export default function RsvpPage() {
           <>
             <div className="space-y-3">
               <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">
-                You're invited
+                You're invited to
               </p>
               <h1 className="font-display text-3xl md:text-4xl text-ivory font-light">
                 {event.title}
@@ -221,7 +221,7 @@ export default function RsvpPage() {
         {state === "waitlisted" && (
           <div className="space-y-3 text-center">
             <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">Waitlist</p>
-            <h1 className="font-display text-3xl text-ivory font-light">You're on the list.</h1>
+            <h1 className="font-display text-3xl text-ivory font-light">You're on the waitlist.</h1>
             <p className="font-display italic text-cream/40 text-lg font-light">
               We'll text you if a spot opens up.
             </p>

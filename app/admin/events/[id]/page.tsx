@@ -56,6 +56,13 @@ export default function EventDetailPage() {
   const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
   const [textBlastOpen, setTextBlastOpen] = useState(false);
   const [guestListOpen, setGuestListOpen] = useState(false);
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/text-blast")
+      .then((r) => r.json())
+      .then((d) => setMemberCount(d.memberCount ?? 0));
+  }, []);
 
   useEffect(() => {
     fetch(`/api/admin/events/${id}`)
@@ -128,6 +135,16 @@ export default function EventDetailPage() {
   const eventDate = event
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : "";
+
+  const blastSegments = getSegmentCount(blastTemplate);
+  const blastCost = memberCount !== null && blastSegments > 0
+    ? (memberCount * blastSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    : null;
+
+  const eventMessageSegments = getSegmentCount(eventMessage);
+  const eventMessageCost = eventMessageSegments > 0
+    ? (rsvps.length * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    : null;
 
   if (loading) {
     return (
@@ -328,7 +345,12 @@ export default function EventDetailPage() {
                       rows={4}
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
-                    <p className="font-body text-xs text-tan">{blastTemplate.length} characters</p>
+                    <div className="flex items-center justify-between font-body text-xs text-tan">
+                      <span>{blastTemplate.length} characters · {blastSegments} {blastSegments === 1 ? "segment" : "segments"}</span>
+                      {blastCost !== null && (
+                        <span>Est. cost: <strong className="text-espresso">${blastCost}</strong></span>
+                      )}
+                    </div>
                   </div>
                   {blastResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
@@ -376,7 +398,12 @@ export default function EventDetailPage() {
                       placeholder=""
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
-                    <p className="font-body text-xs text-tan">{eventMessage.length} characters</p>
+                    <div className="flex items-center justify-between font-body text-xs text-tan">
+                      <span>{eventMessage.length} characters · {eventMessageSegments} {eventMessageSegments === 1 ? "segment" : "segments"}</span>
+                      {eventMessageCost !== null && (
+                        <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong></span>
+                      )}
+                    </div>
                   </div>
                   {messageResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
@@ -404,4 +431,11 @@ export default function EventDetailPage() {
       </main>
     </div>
   );
+}
+
+const TWILIO_PRICE_PER_SEGMENT = 0.0079;
+
+function getSegmentCount(text: string) {
+  if (text.length === 0) return 0;
+  return text.length <= 160 ? 1 : Math.ceil(text.length / 153);
 }
