@@ -67,6 +67,9 @@ export async function GET(
   }
 
   const invitedIds = new Set((invites ?? []).map((i) => i.contact_id));
+  for (const r of rsvps ?? []) {
+    if (r.contact_id) invitedIds.add(r.contact_id);
+  }
   const inviteCandidates = (candidates ?? []).map((c) => ({
     id: c.id,
     name: c.name,
