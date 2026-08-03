@@ -177,9 +177,10 @@ export default function EventDetailPage() {
     ? (blastRecipientCount * blastSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
 
+  const textableRsvps = rsvps.filter((r) => r.contacts?.phone);
   const eventMessageSegments = getSegmentCount(eventMessage);
   const eventMessageCost = eventMessageSegments > 0
-    ? (rsvps.length * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    ? (textableRsvps.length * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
 
   if (loading) {
@@ -488,7 +489,7 @@ export default function EventDetailPage() {
               {textBlastOpen && (
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
-                    Send a message only to the {rsvps.length} {rsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event.
+                    Send a message only to the {textableRsvps.length} {textableRsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event and have a phone number on file.
                   </p>
                   <div className="space-y-1">
                     <textarea
@@ -516,7 +517,7 @@ export default function EventDetailPage() {
                     disabled={sendingMessage || !eventMessage.trim()}
                     className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
                   >
-                    {sendingMessage ? "Sending…" : `Send to ${rsvps.length} ${rsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+                    {sendingMessage ? "Sending…" : `Send to ${textableRsvps.length} ${textableRsvps.length === 1 ? "RSVP" : "RSVPs"}`}
                   </button>
                 </>
               )}
