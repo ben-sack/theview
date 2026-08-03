@@ -45,7 +45,35 @@ export async function GET(
     return NextResponse.json({ error: wlError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [] });
+  const { data: candidates, error: candidatesError } = await supabase
+    .from("contacts")
+    .select("id, name")
+    .eq("status", "approved")
+    .eq("sms_opted_out", false)
+    .not("phone", "is", null)
+    .order("name", { ascending: true });
+
+  if (candidatesError) {
+    return NextResponse.json({ error: candidatesError.message }, { status: 500 });
+  }
+
+  const { data: invites, error: invitesError } = await supabase
+    .from("event_invites")
+    .select("contact_id")
+    .eq("event_id", id);
+
+  if (invitesError) {
+    return NextResponse.json({ error: invitesError.message }, { status: 500 });
+  }
+
+  const invitedIds = new Set((invites ?? []).map((i) => i.contact_id));
+  const inviteCandidates = (candidates ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    invited: invitedIds.has(c.id),
+  }));
+
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates });
 }
 
 export async function PATCH(

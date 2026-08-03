@@ -38,6 +38,12 @@ type WaitlistEntry = {
   };
 };
 
+type InviteCandidate = {
+  id: string;
+  name: string;
+  invited: boolean;
+};
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -56,15 +62,11 @@ export default function EventDetailPage() {
   const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
   const [textBlastOpen, setTextBlastOpen] = useState(false);
   const [guestListOpen, setGuestListOpen] = useState(false);
-  const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [inviteCandidates, setInviteCandidates] = useState<InviteCandidate[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [inviteFilter, setInviteFilter] = useState<"all" | "not_invited" | "invited">("all");
 
-  useEffect(() => {
-    fetch("/api/admin/text-blast")
-      .then((r) => r.json())
-      .then((d) => setMemberCount(d.memberCount ?? 0));
-  }, []);
-
-  useEffect(() => {
+  function loadEvent(isInitial: boolean) {
     fetch(`/api/admin/events/${id}`)
       .then((r) => {
         if (r.status === 401) { router.push("/admin"); return null; }
@@ -75,13 +77,39 @@ export default function EventDetailPage() {
         setEvent(d.event);
         setRsvps(d.rsvps ?? []);
         setWaitlist(d.waitlist ?? []);
-        const ev = d.event;
-        const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-        setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
-        setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
-        setLoading(false);
+        setInviteCandidates(d.inviteCandidates ?? []);
+        if (isInitial) {
+          const ev = d.event;
+          const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+          setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
+          setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
+          setLoading(false);
+        }
       });
+  }
+
+  useEffect(() => {
+    loadEvent(true);
   }, [id, router]);
+
+  function toggleSelect(contactId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  }
+
+  const filteredCandidates = inviteCandidates.filter((c) =>
+    inviteFilter === "all" ? true : inviteFilter === "invited" ? c.invited : !c.invited
+  );
+  const notInvitedCount = inviteCandidates.filter((c) => !c.invited).length;
+  const invitedCount = inviteCandidates.filter((c) => c.invited).length;
+
+  function selectAllFiltered() {
+    setSelectedIds(new Set(filteredCandidates.map((c) => c.id)));
+  }
 
   async function sendEventMessage() {
     if (!eventMessage.trim()) return;
@@ -104,11 +132,18 @@ export default function EventDetailPage() {
     const res = await fetch(`/api/admin/events/${id}/blast`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message_template: blastTemplate }),
+      body: JSON.stringify({
+        message_template: blastTemplate,
+        contact_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+      }),
     });
     const data = await res.json();
     setBlastResult(data);
     setBlasting(false);
+    if (data.sent > 0) {
+      setSelectedIds(new Set());
+      loadEvent(false);
+    }
   }
 
   async function promoteFromWaitlist(waitlistId: string) {
@@ -136,9 +171,10 @@ export default function EventDetailPage() {
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : "";
 
+  const blastRecipientCount = selectedIds.size > 0 ? selectedIds.size : inviteCandidates.length;
   const blastSegments = getSegmentCount(blastTemplate);
-  const blastCost = memberCount !== null && blastSegments > 0
-    ? (memberCount * blastSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+  const blastCost = blastSegments > 0
+    ? (blastRecipientCount * blastSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
 
   const eventMessageSegments = getSegmentCount(eventMessage);
@@ -334,7 +370,7 @@ export default function EventDetailPage() {
               {rsvpBlastOpen && (
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
-                    Sends a personalized invite to every approved member. Edit the message below before sending. Use{" "}
+                    Sends a personalized invite. Leave everyone unselected below to send to all approved members, or pick specific people. Use{" "}
                     <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
                     <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
                   </p>
@@ -352,6 +388,66 @@ export default function EventDetailPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Recipient selection */}
+                  <div className="border-t border-tan/15 pt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-body text-xs font-medium text-espresso">
+                        {selectedIds.size > 0 ? `${selectedIds.size} selected` : `All ${inviteCandidates.length} approved members`}
+                      </p>
+                      <div className="flex gap-1 flex-wrap">
+                        {([
+                          ["all", `All (${inviteCandidates.length})`],
+                          ["not_invited", `Not Invited (${notInvitedCount})`],
+                          ["invited", `Invited (${invitedCount})`],
+                        ] as const).map(([f, label]) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setInviteFilter(f)}
+                            className={`font-body text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                              inviteFilter === f ? "bg-espresso text-ivory border-espresso" : "border-tan/30 text-tan hover:border-tan/50"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={selectAllFiltered} className="font-body text-xs text-rust hover:underline">
+                        Select all {filteredCandidates.length}
+                      </button>
+                      {selectedIds.size > 0 && (
+                        <button type="button" onClick={() => setSelectedIds(new Set())} className="font-body text-xs text-tan hover:underline">
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto border border-tan/20 rounded divide-y divide-tan/10">
+                      {filteredCandidates.length === 0 ? (
+                        <p className="font-body text-xs text-tan italic px-3 py-4 text-center">No one matches this filter.</p>
+                      ) : (
+                        filteredCandidates.map((c) => (
+                          <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-ivory/60 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(c.id)}
+                              onChange={() => toggleSelect(c.id)}
+                              className="w-4 h-4 accent-rust shrink-0"
+                            />
+                            <span className="font-body text-sm text-espresso flex-1 truncate">{c.name}</span>
+                            {c.invited && (
+                              <span className="font-body text-[10px] uppercase tracking-wide text-green-600 shrink-0">Invited</span>
+                            )}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
                   {blastResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
                       <p>Sent to {blastResult.sent} members.</p>
@@ -363,7 +459,11 @@ export default function EventDetailPage() {
                     disabled={blasting || !blastTemplate.trim()}
                     className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
                   >
-                    {blasting ? "Sending…" : "Send RSVP Blast to All Members"}
+                    {blasting
+                      ? "Sending…"
+                      : selectedIds.size > 0
+                      ? `Send to ${selectedIds.size} Selected`
+                      : `Send RSVP Blast to All ${inviteCandidates.length} Members`}
                   </button>
                 </>
               )}

@@ -15,7 +15,7 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { message_template } = await req.json().catch(() => ({}));
+  const { message_template, contact_ids } = await req.json().catch(() => ({}));
 
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -27,12 +27,18 @@ export async function POST(
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
   }
 
-  const { data: contacts, error: contactsError } = await supabase
+  let contactsQuery = supabase
     .from("contacts")
     .select("id, name, phone")
     .eq("status", "approved")
     .eq("sms_opted_out", false)
     .not("phone", "is", null);
+
+  if (Array.isArray(contact_ids) && contact_ids.length > 0) {
+    contactsQuery = contactsQuery.in("id", contact_ids);
+  }
+
+  const { data: contacts, error: contactsError } = await contactsQuery;
 
   if (contactsError) {
     return NextResponse.json({ error: contactsError.message }, { status: 500 });
@@ -54,6 +60,7 @@ export async function POST(
 
   let sent = 0;
   const failures: string[] = [];
+  const sentContactIds: string[] = [];
 
   for (const contact of contacts ?? []) {
     const firstName = contact.name.split(" ")[0];
@@ -69,6 +76,7 @@ export async function POST(
         to: contact.phone!,
       });
       sent++;
+      sentContactIds.push(contact.id);
     } catch (err: unknown) {
       const twilioErr = err as { code?: number };
       if (twilioErr.code === 21610) {
@@ -76,6 +84,15 @@ export async function POST(
       }
       failures.push(contact.name);
     }
+  }
+
+  if (sentContactIds.length > 0) {
+    await supabase
+      .from("event_invites")
+      .upsert(
+        sentContactIds.map((contact_id) => ({ event_id: id, contact_id })),
+        { onConflict: "event_id,contact_id" }
+      );
   }
 
   return NextResponse.json({ sent, failures });
