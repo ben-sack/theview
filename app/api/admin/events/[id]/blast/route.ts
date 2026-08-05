@@ -38,7 +38,7 @@ export async function POST(
     contactsQuery = contactsQuery.in("id", contact_ids);
   }
 
-  const { data: contacts, error: contactsError } = await contactsQuery;
+  const { data: contacts, error: contactsError } = await contactsQuery.range(0, 9999);
 
   if (contactsError) {
     return NextResponse.json({ error: contactsError.message }, { status: 500 });

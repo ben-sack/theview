@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
     .select("id, phone, name")
     .eq("status", "approved")
     .eq("sms_opted_out", false)
-    .not("phone", "is", null);
+    .not("phone", "is", null)
+    .range(0, 9999);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

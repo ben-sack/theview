@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
     .from("contacts")
     .select("*")
     .eq("status", status)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, 9999);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
   const { data: members, error } = await supabase
     .from("contacts")
     .select("name")
-    .eq("status", "approved");
+    .eq("status", "approved")
+    .range(0, 9999);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

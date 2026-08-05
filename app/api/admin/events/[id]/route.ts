@@ -52,7 +52,8 @@ export async function GET(
     .eq("status", "approved")
     .eq("sms_opted_out", false)
     .not("phone", "is", null)
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })
+    .range(0, 9999);
 
   if (candidatesError) {
     return NextResponse.json({ error: candidatesError.message }, { status: 500 });

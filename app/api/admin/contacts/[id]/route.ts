@@ -111,7 +111,8 @@ export async function DELETE(
     const { data: referredContacts } = await supabase
       .from("contacts")
       .select("id, referred_by")
-      .not("referred_by", "is", null);
+      .not("referred_by", "is", null)
+      .range(0, 9999);
 
     const matchingIds = (referredContacts ?? [])
       .filter((c) => c.referred_by?.trim().toLowerCase() === nameKey)
