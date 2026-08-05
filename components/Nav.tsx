@@ -3,6 +3,14 @@ import { useEffect, useState } from "react";
 
 export function Nav() {
   const [visible, setVisible] = useState(false);
+  const [membersEnabled, setMembersEnabled] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/members-portal-status")
+      .then((r) => r.json())
+      .then((d) => setMembersEnabled(!!d.enabled))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 600);
@@ -22,13 +30,17 @@ export function Nav() {
 
       {/* Right: CTAs */}
       <nav className="flex items-center gap-1 md:gap-5">
-        <a
-          href="/members"
-          className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
-        >
-          Members
-        </a>
-        <span className="text-rust/30 text-xs">/</span>
+        {membersEnabled && (
+          <>
+            <a
+              href="/members"
+              className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+            >
+              Members
+            </a>
+            <span className="text-rust/30 text-xs">/</span>
+          </>
+        )}
         <a
           href="#access"
           className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
