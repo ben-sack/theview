@@ -483,12 +483,19 @@ function MembersTab({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
+  const [genderBreakdown, setGenderBreakdown] = useState<{ male: number; female: number; unsure: number } | null>(null);
 
   useEffect(() => {
     const initial: Record<string, string> = {};
     contacts.forEach((c) => { initial[c.id] = c.notes ?? ""; });
     setNotes(initial);
   }, [contacts]);
+
+  useEffect(() => {
+    fetch("/api/admin/members-gender")
+      .then((r) => r.json())
+      .then((d) => setGenderBreakdown(d));
+  }, []);
 
   async function saveNote(id: string) {
     setSavingNote(id);
@@ -527,6 +534,16 @@ function MembersTab({
 
   return (
     <div className="space-y-5">
+      {genderBreakdown && (
+        <div className="bg-white border border-tan/20 rounded-lg px-4 sm:px-6 py-3 flex items-center gap-6 sm:gap-10">
+          <p className="font-body text-xs text-tan tracking-widest uppercase">Gender <span className="text-tan/50 normal-case tracking-normal">(estimated from names)</span></p>
+          <div className="flex items-center gap-5 sm:gap-8">
+            <span className="font-body text-sm text-espresso"><strong className="font-medium">{genderBreakdown.male}</strong> Male</span>
+            <span className="font-body text-sm text-espresso"><strong className="font-medium">{genderBreakdown.female}</strong> Female</span>
+            <span className="font-body text-sm text-tan"><strong className="font-medium">{genderBreakdown.unsure}</strong> Unsure</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
           <input

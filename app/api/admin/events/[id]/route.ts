@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { tallyGender } from "@/lib/estimateGender";
 
 function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
@@ -76,7 +77,13 @@ export async function GET(
     invited: invitedIds.has(c.id),
   }));
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates });
+  const rsvpNames = (rsvps ?? []).map((r) => {
+    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    return contact?.name ?? r.guest_name;
+  });
+  const genderBreakdown = tallyGender(rsvpNames);
+
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, genderBreakdown });
 }
 
 export async function PATCH(

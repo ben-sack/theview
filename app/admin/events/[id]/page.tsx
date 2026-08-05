@@ -44,6 +44,12 @@ type InviteCandidate = {
   invited: boolean;
 };
 
+type GenderBreakdown = {
+  male: number;
+  female: number;
+  unsure: number;
+};
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -65,6 +71,7 @@ export default function EventDetailPage() {
   const [inviteCandidates, setInviteCandidates] = useState<InviteCandidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inviteFilter, setInviteFilter] = useState<"all" | "not_invited" | "invited">("all");
+  const [genderBreakdown, setGenderBreakdown] = useState<GenderBreakdown | null>(null);
 
   function loadEvent(isInitial: boolean) {
     fetch(`/api/admin/events/${id}`)
@@ -78,6 +85,7 @@ export default function EventDetailPage() {
         setRsvps(d.rsvps ?? []);
         setWaitlist(d.waitlist ?? []);
         setInviteCandidates(d.inviteCandidates ?? []);
+        setGenderBreakdown(d.genderBreakdown ?? null);
         if (isInitial) {
           const ev = d.event;
           const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -337,6 +345,30 @@ export default function EventDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Gender breakdown (estimated from first names) */}
+            {genderBreakdown && rsvps.length > 0 && (
+              <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="font-body text-sm font-medium text-espresso">Gender Breakdown</p>
+                  <p className="font-body text-[10px] text-tan/60">Estimated from first names</p>
+                </div>
+                <div className="grid grid-cols-3 divide-x divide-tan/15">
+                  <div className="text-center">
+                    <p className="font-display text-xl sm:text-2xl text-espresso font-light">{genderBreakdown.male}</p>
+                    <p className="font-body text-xs text-tan tracking-widest uppercase">Male</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-display text-xl sm:text-2xl text-espresso font-light">{genderBreakdown.female}</p>
+                    <p className="font-body text-xs text-tan tracking-widest uppercase">Female</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-display text-xl sm:text-2xl text-tan font-light">{genderBreakdown.unsure}</p>
+                    <p className="font-body text-xs text-tan tracking-widest uppercase">Unsure</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Event details — location, co-promoter, guest policy */}
             {(event.location || event.partners || event.allow_guests) && (
