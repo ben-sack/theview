@@ -58,6 +58,7 @@ export default function EventDetailPage() {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [removingRsvpId, setRemovingRsvpId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[] } | null>(null);
@@ -171,6 +172,18 @@ export default function EventDetailPage() {
     setPromotingId(null);
   }
 
+  async function removeRsvp(rsvpId: string, name: string) {
+    if (!confirm(`Remove ${name} from the guest list? This cannot be undone.`)) return;
+    setRemovingRsvpId(rsvpId);
+    const res = await fetch(`/api/admin/events/${id}/rsvps/${rsvpId}`, { method: "DELETE" });
+    if (res.ok) {
+      loadEvent(false);
+    } else {
+      alert("Failed to remove. Please try again.");
+    }
+    setRemovingRsvpId(null);
+  }
+
   const totalAttending = rsvps.reduce((sum, r) => sum + r.party_size, 0);
   const totalCheckedIn = rsvps.filter((r) => r.checked_in).reduce((sum, r) => sum + r.party_size, 0);
   const capacityPct = event ? totalAttending / event.capacity : 0;
@@ -259,9 +272,19 @@ export default function EventDetailPage() {
                   )}
                 </div>
                 <p className="font-body text-xs text-tan truncate">{r.contacts ? (r.contacts.ig_handle ?? r.contacts.email) : "Walk-in (door add)"}</p>
-                <p className="font-body text-xs text-tan/50 mt-0.5">
-                  {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </p>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className="font-body text-xs text-tan/50">
+                    {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeRsvp(r.id, r.contacts?.name ?? r.guest_name ?? "this guest")}
+                    disabled={removingRsvpId === r.id}
+                    className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40 shrink-0"
+                  >
+                    {removingRsvpId === r.id ? "Removing…" : "Remove"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
