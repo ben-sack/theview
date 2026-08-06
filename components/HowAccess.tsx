@@ -26,11 +26,6 @@ export function HowAccess() {
               Someone in the community knows them. Felt they belonged. That's how
               the room stays right.
             </p>
-            <p className="font-body text-cream/45 text-base leading-relaxed font-light">
-              If you're coming through a different door — you found this on your
-              own, or someone sent it to you — you're welcome to reach out. Tell us
-              a little about yourself. There's no formula.
-            </p>
             <p className="font-body text-cream/35 text-base leading-relaxed font-light">
               We're looking for genuine interest and a real connection to the kind
               of night this is.
