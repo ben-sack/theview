@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useInView } from "@/hooks/useInView";
 
 type FormState = {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   ig_handle: string;
@@ -20,7 +21,8 @@ export function AccessForm() {
   const searchParams = useSearchParams();
 
   const [form, setForm] = useState<FormState>({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
     ig_handle: "",
@@ -120,21 +122,39 @@ export function AccessForm() {
         ) : (
           <form onSubmit={onSubmit} className={`space-y-2 md:space-y-3 reveal reveal-d2 ${v}`} noValidate>
 
-            <div className="space-y-1">
-              <label htmlFor="name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                Name
-              </label>
-              <input
-                className="field"
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                required
-                value={form.name}
-                onChange={onChange}
-                placeholder="Your name"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label htmlFor="first_name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                  First Name
+                </label>
+                <input
+                  className="field"
+                  id="first_name"
+                  name="first_name"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  value={form.first_name}
+                  onChange={onChange}
+                  placeholder="First"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="last_name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
+                  Last Name
+                </label>
+                <input
+                  className="field"
+                  id="last_name"
+                  name="last_name"
+                  type="text"
+                  autoComplete="family-name"
+                  required
+                  value={form.last_name}
+                  onChange={onChange}
+                  placeholder="Last"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">

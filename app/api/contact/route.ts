@@ -13,11 +13,13 @@ function normalizePhone(raw: string): string {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, email, phone, ig_handle, referred_by, sms_opt_in } = body;
+  const { first_name, last_name, email, phone, ig_handle, referred_by, sms_opt_in } = body;
 
-  if (!name || !email || !phone || !ig_handle) {
+  if (!first_name?.trim() || !last_name?.trim() || !email || !phone || !ig_handle) {
     return NextResponse.json({ error: "Please fill out all required fields." }, { status: 400 });
   }
+
+  const name = `${first_name.trim()} ${last_name.trim()}`;
 
   if (typeof sms_opt_in !== "boolean") {
     return NextResponse.json({ error: "Please let us know if we can text you." }, { status: 400 });
