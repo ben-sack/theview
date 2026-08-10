@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { tallyGender } from "@/lib/estimateGender";
+import { resolveGender } from "@/lib/estimateGender";
 
 function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
@@ -28,7 +28,7 @@ export async function GET(
 
   const { data: rsvps, error: rsvpError } = await supabase
     .from("rsvps")
-    .select("*, contacts(name, email, phone, ig_handle)")
+    .select("*, contacts(name, email, phone, ig_handle, gender_override)")
     .eq("event_id", id)
     .order("created_at", { ascending: true });
 
@@ -78,11 +78,13 @@ export async function GET(
     invited: invitedIds.has(c.id),
   }));
 
-  const rsvpNames = (rsvps ?? []).map((r) => {
+  const genderBreakdown = { male: 0, female: 0, unsure: 0 };
+  for (const r of rsvps ?? []) {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
-    return contact?.name ?? r.guest_name;
-  });
-  const genderBreakdown = tallyGender(rsvpNames);
+    const name = contact?.name ?? r.guest_name;
+    const gender = resolveGender(name, contact?.gender_override);
+    genderBreakdown[gender]++;
+  }
 
   return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, genderBreakdown });
 }

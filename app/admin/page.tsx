@@ -483,7 +483,12 @@ function MembersTab({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
-  const [genderBreakdown, setGenderBreakdown] = useState<{ male: number; female: number; unsure: number } | null>(null);
+  type GenderGroup = "male" | "female" | "unsure";
+  type GenderMember = { id: string; name: string; gender: GenderGroup };
+  const [genderCounts, setGenderCounts] = useState<{ male: number; female: number; unsure: number } | null>(null);
+  const [genderMembers, setGenderMembers] = useState<GenderMember[]>([]);
+  const [genderModalGroup, setGenderModalGroup] = useState<GenderGroup | null>(null);
+  const [movingGenderId, setMovingGenderId] = useState<string | null>(null);
 
   useEffect(() => {
     const initial: Record<string, string> = {};
@@ -491,11 +496,39 @@ function MembersTab({
     setNotes(initial);
   }, [contacts]);
 
-  useEffect(() => {
+  function loadGenderBreakdown() {
     fetch("/api/admin/members-gender")
       .then((r) => r.json())
-      .then((d) => setGenderBreakdown(d));
+      .then((d) => {
+        setGenderCounts(d.counts);
+        setGenderMembers(d.members ?? []);
+      });
+  }
+
+  useEffect(() => {
+    loadGenderBreakdown();
   }, []);
+
+  async function moveGender(memberId: string, newGroup: GenderGroup) {
+    setMovingGenderId(memberId);
+    const res = await fetch(`/api/admin/contacts/${memberId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gender_override: newGroup }),
+    });
+    if (res.ok) {
+      setGenderMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, gender: newGroup } : m)));
+      setGenderCounts((prev) => {
+        if (!prev) return prev;
+        const moved = genderMembers.find((m) => m.id === memberId);
+        if (!moved) return prev;
+        return { ...prev, [moved.gender]: prev[moved.gender] - 1, [newGroup]: prev[newGroup] + 1 };
+      });
+    } else {
+      alert("Failed to update. Please try again.");
+    }
+    setMovingGenderId(null);
+  }
 
   async function saveNote(id: string) {
     setSavingNote(id);
@@ -534,13 +567,58 @@ function MembersTab({
 
   return (
     <div className="space-y-5">
-      {genderBreakdown && (
+      {genderCounts && (
         <div className="bg-white border border-tan/20 rounded-lg px-4 sm:px-6 py-3 flex items-center gap-6 sm:gap-10">
-          <p className="font-body text-xs text-tan tracking-widest uppercase">Gender <span className="text-tan/50 normal-case tracking-normal">(estimated from names)</span></p>
+          <p className="font-body text-xs text-tan tracking-widest uppercase">Gender <span className="text-tan/50 normal-case tracking-normal">(estimated from names — click to review)</span></p>
           <div className="flex items-center gap-5 sm:gap-8">
-            <span className="font-body text-sm text-espresso"><strong className="font-medium">{genderBreakdown.male}</strong> Male</span>
-            <span className="font-body text-sm text-espresso"><strong className="font-medium">{genderBreakdown.female}</strong> Female</span>
-            <span className="font-body text-sm text-tan"><strong className="font-medium">{genderBreakdown.unsure}</strong> Unsure</span>
+            <button type="button" onClick={() => setGenderModalGroup("male")} className="font-body text-sm text-espresso hover:text-rust transition-colors">
+              <strong className="font-medium">{genderCounts.male}</strong> Male
+            </button>
+            <button type="button" onClick={() => setGenderModalGroup("female")} className="font-body text-sm text-espresso hover:text-rust transition-colors">
+              <strong className="font-medium">{genderCounts.female}</strong> Female
+            </button>
+            <button type="button" onClick={() => setGenderModalGroup("unsure")} className="font-body text-sm text-tan hover:text-rust transition-colors">
+              <strong className="font-medium">{genderCounts.unsure}</strong> Unsure
+            </button>
+          </div>
+        </div>
+      )}
+
+      {genderModalGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-tan/15 shrink-0">
+              <p className="font-display text-xl text-espresso font-light capitalize">{genderModalGroup} ({genderMembers.filter((m) => m.gender === genderModalGroup).length})</p>
+              <button onClick={() => setGenderModalGroup(null)} className="font-body text-xs text-tan hover:text-espresso transition-colors">Close</button>
+            </div>
+            <div className="overflow-y-auto divide-y divide-tan/10">
+              {genderMembers.filter((m) => m.gender === genderModalGroup).length === 0 ? (
+                <p className="font-body text-sm text-tan italic px-6 py-8 text-center">No one in this group.</p>
+              ) : (
+                genderMembers
+                  .filter((m) => m.gender === genderModalGroup)
+                  .map((m) => (
+                    <div key={m.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                      <p className="font-body text-sm text-espresso truncate">{m.name}</p>
+                      <div className="flex gap-2 shrink-0">
+                        {(["male", "female", "unsure"] as const)
+                          .filter((g) => g !== m.gender)
+                          .map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => moveGender(m.id, g)}
+                              disabled={movingGenderId === m.id}
+                              className="font-body text-[11px] px-2.5 py-1 rounded border border-tan/30 text-tan hover:border-rust hover:text-rust transition-colors disabled:opacity-40 capitalize"
+                            >
+                              {movingGenderId === m.id ? "…" : `Move to ${g}`}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
           </div>
         </div>
       )}

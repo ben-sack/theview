@@ -29,3 +29,25 @@ export function tallyGender(names: (string | null | undefined)[]) {
   }
   return counts;
 }
+
+function isGenderEstimate(value: unknown): value is GenderEstimate {
+  return value === "male" || value === "female" || value === "unsure";
+}
+
+export function resolveGender(
+  fullName: string | null | undefined,
+  override: string | null | undefined
+): GenderEstimate {
+  if (isGenderEstimate(override)) return override;
+  return estimateGender(fullName);
+}
+
+export function tallyResolvedGender(
+  people: { name: string | null | undefined; gender_override?: string | null }[]
+) {
+  const counts = { male: 0, female: 0, unsure: 0 };
+  for (const p of people) {
+    counts[resolveGender(p.name, p.gender_override)]++;
+  }
+  return counts;
+}

@@ -41,11 +41,21 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { status, rejection_reason, notes } = body;
+  const { status, rejection_reason, notes, gender_override } = body;
 
   // Notes-only update
   if (notes !== undefined && !status) {
     const { error } = await supabase.from("contacts").update({ notes }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  // Gender-override-only update
+  if (gender_override !== undefined && !status) {
+    if (!["male", "female", "unsure"].includes(gender_override)) {
+      return NextResponse.json({ error: "Invalid gender value." }, { status: 400 });
+    }
+    const { error } = await supabase.from("contacts").update({ gender_override }).eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   }
