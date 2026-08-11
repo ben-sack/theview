@@ -1345,6 +1345,9 @@ function MessageTab() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const segments = getSegmentCount(template);
+  const costPerSend = segments > 0 ? (segments * TWILIO_PRICE_PER_SEGMENT).toFixed(2) : null;
+
   useEffect(() => {
     fetch("/api/admin/sms-template")
       .then((r) => r.json())
@@ -1382,7 +1385,12 @@ function MessageTab() {
           placeholder={`Hi {name}, you've been approved for The View. Here's what to expect…`}
           className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
         />
-        <p className="font-body text-xs text-tan">{template.length} characters</p>
+        <div className="flex items-center justify-between font-body text-xs text-tan">
+          <span>{template.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
+          {costPerSend !== null && (
+            <span>Cost per approval: <strong className="text-espresso">${costPerSend}</strong></span>
+          )}
+        </div>
       </div>
 
       <button
