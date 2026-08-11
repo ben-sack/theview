@@ -87,12 +87,15 @@ export async function POST(
   }
 
   if (sentContactIds.length > 0) {
-    await supabase
+    const { error: inviteTrackingError } = await supabase
       .from("event_invites")
       .upsert(
         sentContactIds.map((contact_id) => ({ event_id: id, contact_id })),
         { onConflict: "event_id,contact_id" }
       );
+    if (inviteTrackingError) {
+      console.error("Failed to record event_invites (texts still sent successfully):", inviteTrackingError.message);
+    }
   }
 
   return NextResponse.json({ sent, failures });
