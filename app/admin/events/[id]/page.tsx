@@ -89,7 +89,7 @@ export default function EventDetailPage() {
         setGenderBreakdown(d.genderBreakdown ?? null);
         if (isInitial) {
           const ev = d.event;
-          const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+          const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
           setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
           setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
           setLoading(false);
@@ -189,7 +189,7 @@ export default function EventDetailPage() {
   const capacityPct = event ? totalAttending / event.capacity : 0;
   const capacityColor = capacityPct >= 1 ? "text-rust" : capacityPct >= 0.8 ? "text-amber" : "text-espresso";
   const eventDate = event
-    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
     : "";
 
   const blastRecipientCount = selectedIds.size > 0 ? selectedIds.size : inviteCandidates.length;
@@ -590,11 +590,16 @@ export default function EventDetailPage() {
 }
 
 function formatDoorTime(date: Date) {
-  let hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  return minutes === 0 ? `${hours}${ampm}` : `${hours}:${String(minutes).padStart(2, "0")}${ampm}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "America/Los_Angeles",
+  }).formatToParts(date);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const ampm = parts.find((p) => p.type === "dayPeriod")?.value ?? "";
+  return minute === "00" ? `${hour}${ampm}` : `${hour}:${minute}${ampm}`;
 }
 
 const TWILIO_PRICE_PER_SEGMENT = 0.0079;

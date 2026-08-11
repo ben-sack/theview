@@ -50,7 +50,7 @@ export default function DoorEventsPage() {
         ) : (
           events.map((ev) => {
             const date = new Date(ev.date).toLocaleDateString("en-US", {
-              weekday: "long", month: "long", day: "numeric",
+              weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
             });
             return (
               <button

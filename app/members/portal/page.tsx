@@ -151,7 +151,7 @@ export default function MemberPortalPage() {
 
 function EventCard({ rsvp, isPast }: { rsvp: Rsvp; isPast?: boolean }) {
   const date = new Date(rsvp.events.date).toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric",
+    weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
   });
 
   return (

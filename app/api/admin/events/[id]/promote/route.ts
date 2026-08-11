@@ -47,7 +47,7 @@ export async function POST(
     try {
       const firstName = contact.name.split(" ")[0];
       const eventDate = new Date(event.date).toLocaleDateString("en-US", {
-        weekday: "long", month: "long", day: "numeric",
+        weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
       });
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({

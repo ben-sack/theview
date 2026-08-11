@@ -115,7 +115,7 @@ export default function DoorCheckinPage() {
   if (!event) return null;
 
   const eventDate = new Date(event.date).toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric",
+    weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
   });
 
   return (

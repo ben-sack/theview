@@ -878,15 +878,20 @@ type AdminEvent = {
 };
 
 function formatDateShort(date: string | Date) {
-  const d = new Date(date);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "2-digit",
+    timeZone: "America/Los_Angeles",
+  }).formatToParts(new Date(date));
+  const mm = parts.find((p) => p.type === "month")?.value ?? "";
+  const dd = parts.find((p) => p.type === "day")?.value ?? "";
+  const yy = parts.find((p) => p.type === "year")?.value ?? "";
   return `${mm}/${dd}/${yy}`;
 }
 
 function formatTime(date: string | Date) {
-  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" });
 }
 
 function formatTimeRange(start: string, end: string | null) {

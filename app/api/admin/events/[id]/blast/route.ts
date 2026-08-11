@@ -48,6 +48,7 @@ export async function POST(
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone: "America/Los_Angeles",
   });
 
   const defaultTemplate = `Hey {name}, the next event at The View is happening. ${event.title} - ${eventDate}${event.location ? ` - ${event.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`;

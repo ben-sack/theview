@@ -69,7 +69,7 @@ export default function RsvpPage() {
   }
 
   const eventDate = event
-    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
     : "";
 
   function googleCalendarLink() {
