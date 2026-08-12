@@ -6,7 +6,7 @@ function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
 }
 
-async function sendApprovalSms(phone: string, name: string) {
+async function sendApprovalSms(contactId: string, phone: string, name: string) {
   const { data } = await supabase
     .from("settings")
     .select("value")
@@ -24,11 +24,19 @@ async function sendApprovalSms(phone: string, name: string) {
     process.env.TWILIO_AUTH_TOKEN
   );
 
-  await client.messages.create({
-    body: message,
-    from: process.env.TWILIO_PHONE_NUMBER,
-    to: phone,
-  });
+  try {
+    await client.messages.create({
+      body: message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: phone,
+    });
+  } catch (err: unknown) {
+    const twilioErr = err as { code?: number };
+    if (twilioErr.code === 21610) {
+      await supabase.from("contacts").update({ sms_opted_out: true }).eq("id", contactId);
+    }
+    throw err;
+  }
 }
 
 export async function PATCH(
@@ -66,7 +74,7 @@ export async function PATCH(
 
   const { data: contact, error: fetchError } = await supabase
     .from("contacts")
-    .select("name, phone")
+    .select("name, phone, sms_opted_out")
     .eq("id", id)
     .single();
 
@@ -88,9 +96,9 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (status === "approved" && contact?.phone) {
+  if (status === "approved" && contact?.phone && !contact.sms_opted_out) {
     try {
-      await sendApprovalSms(contact.phone, contact.name);
+      await sendApprovalSms(id, contact.phone, contact.name);
     } catch (smsError) {
       console.error("SMS failed:", smsError);
     }
