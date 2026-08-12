@@ -207,7 +207,7 @@ export default function SponsorshipsPage() {
 
           <div className={`mt-16 space-y-6 reveal reveal-d3 ${t}`}>
             <Eyebrow>The Former — ClubView Records 2023–Present</Eyebrow>
-            <p className="font-body text-cream/55 text-base leading-loose font-light max-w-xl">
+            <p className="font-body text-cream/55 text-base leading-loose font-light">
               ClubView Records has established its presence in the West LA scene for the last
               three years throwing 25+ events across multiple venues on the west side of Los
               Angeles, including a solidified monthly residency at Wurstküche bringing in
@@ -216,7 +216,7 @@ export default function SponsorshipsPage() {
               With a mailing list of over 3,500 dedicated fans and attendees, ClubView Records is
               quickly becoming a staple of the Los Angeles dance music community.
             </p>
-            <p className="font-body text-cream/40 text-sm leading-loose font-light max-w-xl">
+            <p className="font-body text-cream/40 text-sm leading-loose font-light">
               This is our next step. The View introduces our first ever space completely
               conceptualized by the founders of ClubView for the closer members of our
               community, encompassing young professionals, artists, and visionaries within our
