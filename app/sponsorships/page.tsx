@@ -206,16 +206,21 @@ export default function SponsorshipsPage() {
           </div>
 
           <div className={`mt-16 space-y-6 reveal reveal-d3 ${t}`}>
-            <Eyebrow>The Venue — Santa Monica, CA</Eyebrow>
+            <Eyebrow>The Former — ClubView Records 2023–Present</Eyebrow>
             <p className="font-body text-cream/55 text-base leading-loose font-light max-w-xl">
-              150-person capacity, bar-forward layout, no VIP section — a speakeasy room opening
-              Saturday, August 15, 2026. Entry is private invitation or approved membership only,
-              no public ticketing.
+              ClubView Records has established its presence in the West LA scene for the last
+              three years throwing 25+ events across multiple venues on the west side of Los
+              Angeles, including a solidified monthly residency at Wurstküche bringing in
+              high-profile DJs from across the world. Our residency is sold out every single
+              month and is quickly becoming a niche of its own among Santa Monica/Venice locals.
+              With a mailing list of over 3,500 dedicated fans and attendees, ClubView Records is
+              quickly becoming a staple of the Los Angeles dance music community.
             </p>
             <p className="font-body text-cream/40 text-sm leading-loose font-light max-w-xl">
-              Monthly private events to start, scaling in frequency as liquor licensing
-              progresses — building toward a full-time bar, open Friday and Saturday every
-              weekend.
+              This is our next step. The View introduces our first ever space completely
+              conceptualized by the founders of ClubView for the closer members of our
+              community, encompassing young professionals, artists, and visionaries within our
+              inner circle.
             </p>
           </div>
         </div>
