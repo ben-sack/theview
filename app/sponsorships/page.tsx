@@ -1,6 +1,8 @@
 "use client";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
+import { WordmarkSVG } from "@/components/WordmarkSVG";
 
 function Eyebrow({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -47,6 +49,14 @@ function ListItem({ children }: { children: React.ReactNode }) {
 }
 
 export default function SponsorshipsPage() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 200);  // logo + tagline
+    const t2 = setTimeout(() => setPhase(2), 600);  // wordmark
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
   const concept = useInView<HTMLElement>();
   const trackRecord = useInView<HTMLElement>();
   const experience = useInView<HTMLElement>();
@@ -82,25 +92,45 @@ export default function SponsorshipsPage() {
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-espresso/50 via-transparent to-espresso/70" />
 
         <div className="relative z-10 flex flex-col items-center text-center gap-7 max-w-lg">
-          <Image src="/logo.png" alt="" aria-hidden width={120} height={90} className="w-16 md:w-20 h-auto opacity-80" priority />
+          <div
+            className={`transition-all duration-1000 ${
+              phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
+          >
+            <Image src="/logo.png" alt="" aria-hidden width={120} height={90} className="w-16 md:w-20 h-auto opacity-80" priority />
+          </div>
 
-          <div className="space-y-3">
+          <div
+            className={`text-center transition-all duration-1000 delay-100 ${
+              phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
+          >
             <Eyebrow>Los Angeles</Eyebrow>
-            <h1 className="font-display text-5xl md:text-7xl text-ivory font-light">The View</h1>
+          </div>
+
+          <div className={`w-full max-w-[280px] md:max-w-sm transition-opacity duration-700 ${phase >= 2 ? "opacity-100" : "opacity-0"}`}>
+            <WordmarkSVG animate={phase >= 2} className="w-full h-auto" />
+          </div>
+
+          <div
+            className={`space-y-7 transition-all duration-1000 ${
+              phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
+          >
             <p className="font-display italic text-cream/45 text-lg md:text-xl font-light">
               A gathering. By invitation.
             </p>
-          </div>
 
-          <div className="section-rule my-2" />
+            <div className="section-rule mx-auto" />
 
-          <div className="space-y-2">
-            <p className="font-body text-[10px] tracking-[0.3em] uppercase text-amber/70">
-              Sponsorship Partnership — Santa Monica, CA
-            </p>
-            <p className="font-body text-cream/50 text-sm">
-              Opening Saturday, August 15, 2026
-            </p>
+            <div className="space-y-2">
+              <p className="font-body text-[10px] tracking-[0.3em] uppercase text-amber/70">
+                Sponsorship Partnership — Santa Monica, CA
+              </p>
+              <p className="font-body text-cream/50 text-sm">
+                Opening Saturday, August 15, 2026
+              </p>
+            </div>
           </div>
         </div>
 
