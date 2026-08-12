@@ -236,15 +236,15 @@ export default function SponsorshipsPage() {
             <div className="space-y-3">
               <Eyebrow>What We Need</Eyebrow>
               <p className="font-body text-cream/55 text-sm leading-loose font-light">
-                In-kind product only — roughly 150–200 units of beer or spirits per monthly event
+                In-kind product only — roughly 150–200 units of beer per monthly event
                 to start. No cash sponsorship required. As The View scales toward a full liquor
                 license and a weekly Friday/Saturday bar, product needs scale with it.
               </p>
             </div>
             <div className="space-y-3">
-              <Eyebrow>What You Get</Eyebrow>
+              <Eyebrow>What Else We Can Offer</Eyebrow>
               <ul>
-                <ListItem>Menu exclusivity — the only beer or spirit of its kind served</ListItem>
+                <ListItem>Menu exclusivity — the only beer</ListItem>
                 <ListItem>Category exclusivity across our events</ListItem>
                 <ListItem>
                   A relationship with The View from day one, ahead of any future formal tiers
