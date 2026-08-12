@@ -257,7 +257,7 @@ export default function SponsorshipsPage() {
             <Eyebrow className="mb-8">Growth Trajectory</Eyebrow>
             <div className="grid md:grid-cols-3 gap-8">
               <GrowthStep n="1" text="Now — monthly private events, 150-cap" />
-              <GrowthStep n="2" text="Increased frequency as licensing progresses" />
+              <GrowthStep n="2" text="Increased frequency of exclusive events" />
               <GrowthStep n="3" text="Full license — open Fri &amp; Sat, every weekend" />
             </div>
           </div>
