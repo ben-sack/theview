@@ -90,7 +90,7 @@ export default function EventDetailPage() {
         if (isInitial) {
           const ev = d.event;
           const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
-          setBlastTemplate(`Hey {name}, the next one is happening. ${ev.title} - ${eventDate}${ev.location ? ` - ${ev.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`);
+          setBlastTemplate(`Hey {name}, you're invited to ${ev.title} on ${eventDate}. Spots are limited — RSVP here to claim yours: {rsvp_link}`);
           setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
           setLoading(false);
         }

@@ -52,7 +52,7 @@ export async function POST(
     timeZone: "America/Los_Angeles",
   });
 
-  const defaultTemplate = `Hey {name}, the next event at The View is happening. ${event.title} - ${eventDate}${event.location ? ` - ${event.location}` : ""}. Secure your spot before it fills up: {rsvp_link}`;
+  const defaultTemplate = `Hey {name}, you're invited to ${event.title} on ${eventDate}. Spots are limited — RSVP here to claim yours: {rsvp_link}`;
   const template = message_template?.trim() || defaultTemplate;
 
   const client = twilio(
