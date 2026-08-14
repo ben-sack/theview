@@ -49,9 +49,25 @@ export async function POST(
       const eventDate = new Date(event.date).toLocaleDateString("en-US", {
         weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
       });
+
+      const { data: setting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "waitlist_sms_template")
+        .single();
+
+      const defaultTemplate = "Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there.";
+      const template = setting?.value || defaultTemplate;
+
+      const body = template
+        .replace(/\{name\}/gi, firstName)
+        .replace(/\{event\}/gi, event.title)
+        .replace(/\{date\}/gi, eventDate)
+        .replace(/\{location\}/gi, event.location ?? "");
+
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({
-        body: `Good news, ${firstName}! A spot just opened up at The View for ${event.title} on ${eventDate}${event.location ? ` at ${event.location}` : ""}. You're officially on the list - see you there.\n\nReply STOP to opt out`,
+        body: `${body}\n\nReply STOP to opt out`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone,
       });

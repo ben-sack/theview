@@ -185,7 +185,7 @@ export default function AdminPage() {
     approved: "Members",
     rejected: "Rejected",
     events: "Events",
-    message: "Welcome Message",
+    message: "Automated Messages",
     blast: "Text Blasts",
     referrals: "Referrals",
     settings: "Settings",
@@ -1350,13 +1350,26 @@ function MessageTab() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [waitlistTemplate, setWaitlistTemplate] = useState("");
+  const [waitlistSaved, setWaitlistSaved] = useState(false);
+  const [waitlistSaving, setWaitlistSaving] = useState(false);
+
   const segments = getSegmentCount(template);
   const costPerSend = segments > 0 ? (segments * TWILIO_PRICE_PER_SEGMENT).toFixed(2) : null;
+
+  const waitlistSegments = getSegmentCount(waitlistTemplate);
+  const waitlistCostPerSend = waitlistSegments > 0 ? (waitlistSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2) : null;
 
   useEffect(() => {
     fetch("/api/admin/sms-template")
       .then((r) => r.json())
       .then((d) => setTemplate(d.template ?? ""));
+
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((d) => setWaitlistTemplate(
+        d.waitlist_sms_template ?? "Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there."
+      ));
   }, []);
 
   async function save() {
@@ -1371,40 +1384,92 @@ function MessageTab() {
     setTimeout(() => setSaved(false), 3000);
   }
 
+  async function saveWaitlist() {
+    setWaitlistSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "waitlist_sms_template", value: waitlistTemplate }),
+    });
+    setWaitlistSaving(false);
+    setWaitlistSaved(true);
+    setTimeout(() => setWaitlistSaved(false), 3000);
+  }
+
   return (
-    <div className="max-w-xl space-y-6">
-      <div>
-        <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Welcome Message</h2>
-        <p className="font-body text-sm text-tan leading-relaxed">
-          Sent automatically when you approve someone. Use{" "}
-          <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{name}"}</span>{" "}
-          to personalize it with their first name.
-        </p>
-      </div>
-
-      <div className="space-y-1">
-        <textarea
-          value={template}
-          onChange={(e) => setTemplate(e.target.value)}
-          rows={8}
-          placeholder={`Hi {name}, you've been approved for The View. Here's what to expect…`}
-          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
-        />
-        <div className="flex items-center justify-between font-body text-xs text-tan">
-          <span>{template.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
-          {costPerSend !== null && (
-            <span>Cost per approval: <strong className="text-espresso">${costPerSend}</strong></span>
-          )}
+    <div className="max-w-xl space-y-10">
+      <div className="space-y-4">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Welcome Message</h2>
+          <p className="font-body text-sm text-tan leading-relaxed">
+            Sent automatically when you approve someone. Use{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{name}"}</span>{" "}
+            to personalize it with their first name.
+          </p>
         </div>
+
+        <div className="space-y-1">
+          <textarea
+            value={template}
+            onChange={(e) => setTemplate(e.target.value)}
+            rows={8}
+            placeholder={`Hi {name}, you've been approved for The View. Here's what to expect…`}
+            className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
+          />
+          <div className="flex items-center justify-between font-body text-xs text-tan">
+            <span>{template.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
+            {costPerSend !== null && (
+              <span>Cost per approval: <strong className="text-espresso">${costPerSend}</strong></span>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : saved ? "Saved ✓" : "Save Message"}
+        </button>
       </div>
 
-      <button
-        onClick={save}
-        disabled={saving}
-        className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-      >
-        {saving ? "Saving…" : saved ? "Saved ✓" : "Save Message"}
-      </button>
+      <div className="space-y-4 pt-6 border-t border-tan/15">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl text-espresso font-light mb-1">Waitlist Message</h2>
+          <p className="font-body text-sm text-tan leading-relaxed">
+            Sent automatically when you admit someone off an event's waitlist. Use{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{name}"}</span>,{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{event}"}</span>,{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{date}"}</span>, and{" "}
+            <span className="text-rust font-mono bg-rust/10 px-1 rounded">{"{location}"}</span>{" "}
+            to personalize it.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <textarea
+            value={waitlistTemplate}
+            onChange={(e) => setWaitlistTemplate(e.target.value)}
+            rows={6}
+            placeholder={`Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there.`}
+            className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
+          />
+          <div className="flex items-center justify-between font-body text-xs text-tan">
+            <span>{waitlistTemplate.length} characters · {waitlistSegments} {waitlistSegments === 1 ? "segment" : "segments"}</span>
+            {waitlistCostPerSend !== null && (
+              <span>Cost per promotion: <strong className="text-espresso">${waitlistCostPerSend}</strong></span>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={saveWaitlist}
+          disabled={waitlistSaving}
+          className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+        >
+          {waitlistSaving ? "Saving…" : waitlistSaved ? "Saved ✓" : "Save Message"}
+        </button>
+      </div>
     </div>
   );
 }
