@@ -8,7 +8,7 @@ type Event = {
   title: string;
   date: string;
   end_time: string | null;
-  location: string | null;
+  city: string | null;
   partners: string | null;
   capacity: number;
   allow_guests: boolean;
@@ -84,7 +84,7 @@ export default function RsvpPage() {
       dates: `${formatDate(start)}/${formatDate(end)}`,
       details: "See you there — The View",
     });
-    if (event.location) params.set("location", event.location);
+    if (event.city) params.set("location", event.city);
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
@@ -118,8 +118,8 @@ export default function RsvpPage() {
                 {event.title}
               </h1>
               <p className="font-body text-sm text-cream/50">{eventDate}</p>
-              {event.location && (
-                <p className="font-body text-sm text-cream/40">{event.location}</p>
+              {event.city && (
+                <p className="font-body text-sm text-cream/40">{event.city}</p>
               )}
               {event.partners && (
                 <p className="font-body text-xs text-tan/40 tracking-widest uppercase">

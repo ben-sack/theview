@@ -21,7 +21,7 @@ type Rsvp = {
     id: string;
     title: string;
     date: string;
-    location: string | null;
+    city: string | null;
   };
 };
 
@@ -163,8 +163,8 @@ function EventCard({ rsvp, isPast }: { rsvp: Rsvp; isPast?: boolean }) {
         )}
       </div>
       <p className="font-body text-sm text-cream/40">{date}</p>
-      {rsvp.events.location && (
-        <p className="font-body text-xs text-tan/40">{rsvp.events.location}</p>
+      {rsvp.events.city && (
+        <p className="font-body text-xs text-tan/40">{rsvp.events.city}</p>
       )}
       {rsvp.party_size > 1 && (
         <p className="font-body text-xs text-tan/40">Party of {rsvp.party_size}</p>

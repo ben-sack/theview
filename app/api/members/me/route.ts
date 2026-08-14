@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const { data: rsvps } = await supabase
     .from("rsvps")
-    .select("party_size, checked_in, created_at, events(id, title, date, location)")
+    .select("party_size, checked_in, created_at, events(id, title, date, city)")
     .eq("contact_id", session.contact_id)
     .order("created_at", { ascending: false });
 

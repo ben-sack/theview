@@ -870,6 +870,7 @@ type AdminEvent = {
   end_time: string | null;
   capacity: number;
   location: string | null;
+  city: string | null;
   partners: string | null;
   allow_guests: boolean;
   rsvp_count: number;
@@ -903,10 +904,10 @@ function EventsTab() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [form, setForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
   const [saving, setSaving] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
+  const [editForm, setEditForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
   const [editSaving, setEditSaving] = useState(false);
 
   function loadEvents() {
@@ -934,7 +935,7 @@ function EventsTab() {
         capacity: parseInt(form.capacity),
       }),
     });
-    setForm({ title: "", date: "", end_time: "", capacity: "", location: "", partners: "", allow_guests: false });
+    setForm({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
     setAdding(false);
     setSaving(false);
     loadEvents();
@@ -960,6 +961,7 @@ function EventsTab() {
       end_time: ev.end_time ? toLocalIso(ev.end_time) : "",
       capacity: String(ev.capacity),
       location: ev.location ?? "",
+      city: ev.city ?? "",
       partners: ev.partners ?? "",
       allow_guests: ev.allow_guests,
     });
@@ -1046,6 +1048,16 @@ function EventsTab() {
                     className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
                     placeholder="Venue name or address"
                   />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">City</label>
+                  <input
+                    value={editForm.city}
+                    onChange={(e) => setEditForm((p) => ({ ...p, city: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                    placeholder="e.g. Santa Monica, CA"
+                  />
+                  <p className="font-body text-[10px] text-tan/60 leading-relaxed">Shown publicly on the RSVP page before the exact address is revealed via the reminder text.</p>
                 </div>
                 <div className="space-y-1">
                   <label className="font-body text-xs tracking-widest uppercase text-tan">Partner(s)</label>
@@ -1150,6 +1162,16 @@ function EventsTab() {
                 className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
                 placeholder="Venue name or address"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">City</label>
+              <input
+                value={form.city}
+                onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="e.g. Santa Monica, CA"
+              />
+              <p className="font-body text-[10px] text-tan/60 leading-relaxed">Shown publicly on the RSVP page before the exact address is revealed via the reminder text.</p>
             </div>
             <div className="space-y-1 md:col-span-2">
               <label className="font-body text-xs tracking-widest uppercase text-tan">Partner(s)</label>
