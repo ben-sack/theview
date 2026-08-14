@@ -91,7 +91,8 @@ export default function EventDetailPage() {
           const ev = d.event;
           const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
           setBlastTemplate(`Hey {name}, you're invited to ${ev.title} on ${eventDate}. Spots are limited — RSVP here to claim yours: {rsvp_link}`);
-          setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
+          const addressLine = ev.location ? ` Here is the address: ${ev.location}.` : "";
+          setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday.${addressLine} Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
           setLoading(false);
         }
       });
