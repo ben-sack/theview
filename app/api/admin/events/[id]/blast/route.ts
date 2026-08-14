@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getRsvpShortLink } from "@/lib/shortLink";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -65,7 +66,7 @@ export async function POST(
 
   for (const contact of contacts ?? []) {
     const firstName = contact.name.split(" ")[0];
-    const rsvpLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://theview.la"}/rsvp/${id}?c=${contact.id}`;
+    const rsvpLink = await getRsvpShortLink(id, contact.id);
     const message = `${template
       .replace(/\{name\}/gi, firstName)
       .replace(/\{rsvp_link\}/gi, rsvpLink)}\n\nReply STOP to opt out`;
