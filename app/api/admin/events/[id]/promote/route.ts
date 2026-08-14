@@ -63,7 +63,7 @@ export async function POST(
         .replace(/\{name\}/gi, firstName)
         .replace(/\{event\}/gi, event.title)
         .replace(/\{date\}/gi, eventDate)
-        .replace(/\{location\}/gi, event.location ?? "");
+        .replace(/\{location\}/gi, event.location?.trim() || "the venue");
 
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({
