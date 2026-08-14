@@ -14,15 +14,17 @@ export async function POST(
   }
 
   const { eventId } = await params;
-  const { name } = await req.json().catch(() => ({}));
+  const { name, party_size } = await req.json().catch(() => ({}));
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
 
+  const size = Math.min(Math.max(Number(party_size) || 1, 1), 6);
+
   const { data, error } = await supabase
     .from("rsvps")
-    .insert({ event_id: eventId, contact_id: null, guest_name: name.trim(), party_size: 1 })
+    .insert({ event_id: eventId, contact_id: null, guest_name: name.trim(), party_size: size })
     .select("id, party_size, checked_in, checked_in_at, guest_name, contacts(name, ig_handle)")
     .single();
 

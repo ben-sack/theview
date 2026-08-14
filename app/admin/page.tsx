@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Contact = {
   id: string;
@@ -19,11 +20,31 @@ type Contact = {
 
 type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals" | "settings";
 
+const TABS: Tab[] = ["pending", "approved", "rejected", "events", "message", "blast", "referrals", "settings"];
+
 export default function AdminPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminPageInner />
+    </Suspense>
+  );
+}
+
+function AdminPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [tab, setTab] = useState<Tab>("pending");
+  const [tab, setTabState] = useState<Tab>(() => {
+    const fromUrl = searchParams.get("tab") as Tab | null;
+    return fromUrl && TABS.includes(fromUrl) ? fromUrl : "pending";
+  });
+
+  function setTab(t: Tab) {
+    setTabState(t);
+    router.replace(`/admin?tab=${t}`, { scroll: false });
+  }
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);

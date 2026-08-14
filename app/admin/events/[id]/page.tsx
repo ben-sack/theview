@@ -42,6 +42,7 @@ type InviteCandidate = {
   id: string;
   name: string;
   invited: boolean;
+  rsvped: boolean;
 };
 
 type GenderBreakdown = {
@@ -71,7 +72,7 @@ export default function EventDetailPage() {
   const [guestListOpen, setGuestListOpen] = useState(false);
   const [inviteCandidates, setInviteCandidates] = useState<InviteCandidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [inviteFilter, setInviteFilter] = useState<"all" | "not_invited" | "invited">("all");
+  const [inviteFilter, setInviteFilter] = useState<"all" | "not_invited" | "invited" | "invited_no_rsvp">("all");
   const [genderBreakdown, setGenderBreakdown] = useState<GenderBreakdown | null>(null);
 
   function loadEvent(isInitial: boolean) {
@@ -111,11 +112,15 @@ export default function EventDetailPage() {
     });
   }
 
-  const filteredCandidates = inviteCandidates.filter((c) =>
-    inviteFilter === "all" ? true : inviteFilter === "invited" ? c.invited : !c.invited
-  );
+  const filteredCandidates = inviteCandidates.filter((c) => {
+    if (inviteFilter === "all") return true;
+    if (inviteFilter === "invited") return c.invited;
+    if (inviteFilter === "invited_no_rsvp") return c.invited && !c.rsvped;
+    return !c.invited;
+  });
   const notInvitedCount = inviteCandidates.filter((c) => !c.invited).length;
   const invitedCount = inviteCandidates.filter((c) => c.invited).length;
+  const invitedNoRsvpCount = inviteCandidates.filter((c) => c.invited && !c.rsvped).length;
 
   function selectAllFiltered() {
     setSelectedIds(new Set(filteredCandidates.map((c) => c.id)));
@@ -457,6 +462,7 @@ export default function EventDetailPage() {
                           ["all", `All (${inviteCandidates.length})`],
                           ["not_invited", `Not Invited (${notInvitedCount})`],
                           ["invited", `Invited (${invitedCount})`],
+                          ["invited_no_rsvp", `Invited, No RSVP (${invitedNoRsvpCount})`],
                         ] as const).map(([f, label]) => (
                           <button
                             key={f}

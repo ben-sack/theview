@@ -69,13 +69,12 @@ export async function GET(
   }
 
   const invitedIds = new Set((invites ?? []).map((i) => i.contact_id));
-  for (const r of rsvps ?? []) {
-    if (r.contact_id) invitedIds.add(r.contact_id);
-  }
+  const rsvpedIds = new Set((rsvps ?? []).map((r) => r.contact_id).filter(Boolean));
   const inviteCandidates = (candidates ?? []).map((c) => ({
     id: c.id,
     name: c.name,
-    invited: invitedIds.has(c.id),
+    invited: invitedIds.has(c.id) || rsvpedIds.has(c.id),
+    rsvped: rsvpedIds.has(c.id),
   }));
 
   const genderBreakdown = { male: 0, female: 0, unsure: 0 };

@@ -31,6 +31,7 @@ export default function DoorCheckinPage() {
   const [toggling, setToggling] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newGuestName, setNewGuestName] = useState("");
+  const [newGuestParty, setNewGuestParty] = useState(1);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -59,12 +60,13 @@ export default function DoorCheckinPage() {
     const res = await fetch(`/api/door/${eventId}/add-guest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newGuestName.trim() }),
+      body: JSON.stringify({ name: newGuestName.trim(), party_size: newGuestParty }),
     });
     if (res.ok) {
       const { rsvp } = await res.json();
       setRsvps((prev) => [...prev, rsvp]);
       setNewGuestName("");
+      setNewGuestParty(1);
       setShowAddForm(false);
     }
     setAdding(false);
@@ -169,7 +171,11 @@ export default function DoorCheckinPage() {
           />
           <button
             type="button"
-            onClick={() => setShowAddForm((v) => !v)}
+            onClick={() => {
+              setShowAddForm((v) => !v);
+              setNewGuestName("");
+              setNewGuestParty(1);
+            }}
             className="shrink-0 px-4 py-3 bg-tan/10 border border-tan/20 rounded font-body text-sm text-tan hover:text-ivory hover:border-tan/40 transition-colors"
           >
             {showAddForm ? "Cancel" : "+ Add"}
@@ -177,22 +183,43 @@ export default function DoorCheckinPage() {
         </div>
 
         {showAddForm && (
-          <form onSubmit={addGuest} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Guest name"
-              value={newGuestName}
-              onChange={(e) => setNewGuestName(e.target.value)}
-              autoFocus
-              className="flex-1 min-w-0 bg-tan/10 border border-tan/20 rounded px-4 py-3 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust"
-            />
-            <button
-              type="submit"
-              disabled={adding || !newGuestName.trim()}
-              className="shrink-0 px-4 py-3 bg-rust text-ivory rounded font-body text-sm hover:bg-rust/80 transition-colors disabled:opacity-40"
-            >
-              {adding ? "…" : "Add"}
-            </button>
+          <form onSubmit={addGuest} className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Guest name"
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+                autoFocus
+                className="flex-1 min-w-0 bg-tan/10 border border-tan/20 rounded px-4 py-3 font-body text-base text-ivory placeholder-tan/40 focus:outline-none focus:border-rust"
+              />
+              <button
+                type="submit"
+                disabled={adding || !newGuestName.trim()}
+                className="shrink-0 px-4 py-3 bg-rust text-ivory rounded font-body text-sm hover:bg-rust/80 transition-colors disabled:opacity-40"
+              >
+                {adding ? "…" : "Add"}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="font-body text-xs text-tan/60 uppercase tracking-widest shrink-0">Party</p>
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNewGuestParty(n)}
+                    className={`px-3 py-1.5 rounded font-body text-sm transition-colors ${
+                      newGuestParty === n
+                        ? "bg-rust text-ivory"
+                        : "bg-tan/10 border border-tan/20 text-tan hover:text-ivory hover:border-tan/40"
+                    }`}
+                  >
+                    {n === 1 ? "Just them" : `+${n - 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
           </form>
         )}
       </div>
