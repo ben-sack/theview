@@ -1368,7 +1368,7 @@ function MessageTab() {
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((d) => setWaitlistTemplate(
-        d.waitlist_sms_template ?? "Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there."
+        d.waitlist_sms_template ?? "Good news, {name}! A spot just opened up for {event} on {date} at {location}. You're officially on the list, see you there!"
       ));
   }, []);
 
@@ -1451,7 +1451,7 @@ function MessageTab() {
             value={waitlistTemplate}
             onChange={(e) => setWaitlistTemplate(e.target.value)}
             rows={6}
-            placeholder={`Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there.`}
+            placeholder={`Good news, {name}! A spot just opened up for {event} on {date} at {location}. You're officially on the list, see you there!`}
             className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
           />
           <div className="flex items-center justify-between font-body text-xs text-tan">

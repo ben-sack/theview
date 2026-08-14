@@ -56,7 +56,7 @@ export async function POST(
         .eq("key", "waitlist_sms_template")
         .single();
 
-      const defaultTemplate = "Good news, {name}! A spot just opened up at The View for {event} on {date} at {location}. You're officially on the list - see you there.";
+      const defaultTemplate = "Good news, {name}! A spot just opened up for {event} on {date} at {location}. You're officially on the list, see you there!";
       const template = setting?.value || defaultTemplate;
 
       const body = template
