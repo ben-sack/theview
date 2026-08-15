@@ -19,6 +19,7 @@ type Rsvp = {
   created_at: string;
   guest_name: string | null;
   contacts: {
+    id: string;
     name: string;
     email: string;
     phone: string | null;
@@ -74,6 +75,9 @@ export default function EventDetailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inviteFilter, setInviteFilter] = useState<"all" | "not_invited" | "invited" | "invited_no_rsvp">("all");
   const [genderBreakdown, setGenderBreakdown] = useState<GenderBreakdown | null>(null);
+  const [textBlastSentIds, setTextBlastSentIds] = useState<Set<string>>(new Set());
+  const [textSelectedIds, setTextSelectedIds] = useState<Set<string>>(new Set());
+  const [textFilter, setTextFilter] = useState<"all" | "not_sent" | "sent">("all");
 
   function loadEvent(isInitial: boolean) {
     fetch(`/api/admin/events/${id}`)
@@ -88,6 +92,7 @@ export default function EventDetailPage() {
         setWaitlist(d.waitlist ?? []);
         setInviteCandidates(d.inviteCandidates ?? []);
         setGenderBreakdown(d.genderBreakdown ?? null);
+        setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
         if (isInitial) {
           const ev = d.event;
           const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
@@ -126,6 +131,19 @@ export default function EventDetailPage() {
     setSelectedIds(new Set(filteredCandidates.map((c) => c.id)));
   }
 
+  function toggleTextSelect(contactId: string) {
+    setTextSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  }
+
+  function selectAllFilteredText(ids: string[]) {
+    setTextSelectedIds(new Set(ids));
+  }
+
   async function sendEventMessage() {
     if (!eventMessage.trim()) return;
     setSendingMessage(true);
@@ -133,12 +151,19 @@ export default function EventDetailPage() {
     const res = await fetch(`/api/admin/events/${id}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: eventMessage }),
+      body: JSON.stringify({
+        message: eventMessage,
+        contact_ids: textSelectedIds.size > 0 ? Array.from(textSelectedIds) : undefined,
+      }),
     });
     const data = await res.json();
     setMessageResult(data);
     setSendingMessage(false);
-    if (data.sent > 0) setEventMessage("");
+    if (data.sent > 0) {
+      setEventMessage("");
+      setTextSelectedIds(new Set());
+      loadEvent(false);
+    }
   }
 
   async function sendBlast() {
@@ -205,9 +230,23 @@ export default function EventDetailPage() {
     : null;
 
   const textableRsvps = rsvps.filter((r) => r.contacts?.phone);
+  const textCandidates = textableRsvps.map((r) => ({
+    id: r.contacts!.id,
+    name: r.contacts!.name,
+    sent: textBlastSentIds.has(r.contacts!.id),
+  }));
+  const textNotSentCount = textCandidates.filter((c) => !c.sent).length;
+  const textSentCount = textCandidates.filter((c) => c.sent).length;
+  const filteredTextCandidates = textCandidates.filter((c) => {
+    if (textFilter === "sent") return c.sent;
+    if (textFilter === "not_sent") return !c.sent;
+    return true;
+  });
+
+  const textRecipientCount = textSelectedIds.size > 0 ? textSelectedIds.size : textableRsvps.length;
   const eventMessageSegments = getSegmentCount(eventMessage);
   const eventMessageCost = eventMessageSegments > 0
-    ? (textableRsvps.length * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    ? (textRecipientCount * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
 
   if (loading) {
@@ -551,7 +590,7 @@ export default function EventDetailPage() {
               {textBlastOpen && (
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
-                    Send a message only to the {textableRsvps.length} {textableRsvps.length === 1 ? "person" : "people"} who have RSVP'd to this event and have a phone number on file.
+                    Sends only to people who've RSVP'd and have a phone on file. Leave everyone unselected to send to all {textableRsvps.length}, or pick specific people — handy for catching up latecomers after an earlier send.
                   </p>
                   <div className="space-y-1">
                     <textarea
@@ -568,6 +607,70 @@ export default function EventDetailPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Recipient selection */}
+                  <div className="border-t border-tan/15 pt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-body text-xs font-medium text-espresso">
+                        {textSelectedIds.size > 0 ? `${textSelectedIds.size} selected` : `All ${textableRsvps.length} RSVP'd`}
+                      </p>
+                      <div className="flex gap-1 flex-wrap">
+                        {([
+                          ["all", `All (${textCandidates.length})`],
+                          ["not_sent", `Not Sent Yet (${textNotSentCount})`],
+                          ["sent", `Already Sent (${textSentCount})`],
+                        ] as const).map(([f, label]) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setTextFilter(f)}
+                            className={`font-body text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                              textFilter === f ? "bg-espresso text-ivory border-espresso" : "border-tan/30 text-tan hover:border-tan/50"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => selectAllFilteredText(filteredTextCandidates.map((c) => c.id))}
+                        className="font-body text-xs text-rust hover:underline"
+                      >
+                        Select all {filteredTextCandidates.length}
+                      </button>
+                      {textSelectedIds.size > 0 && (
+                        <button type="button" onClick={() => setTextSelectedIds(new Set())} className="font-body text-xs text-tan hover:underline">
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto border border-tan/20 rounded divide-y divide-tan/10">
+                      {filteredTextCandidates.length === 0 ? (
+                        <p className="font-body text-xs text-tan italic px-3 py-4 text-center">No one matches this filter.</p>
+                      ) : (
+                        filteredTextCandidates.map((c) => (
+                          <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-ivory/60 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={textSelectedIds.has(c.id)}
+                              onChange={() => toggleTextSelect(c.id)}
+                              className="w-4 h-4 accent-rust shrink-0"
+                            />
+                            <span className="font-body text-sm text-espresso flex-1 truncate">{c.name}</span>
+                            {c.sent && (
+                              <span className="font-body text-[10px] uppercase tracking-wide text-green-600 shrink-0">Sent</span>
+                            )}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
                   {messageResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
                       <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
@@ -579,7 +682,11 @@ export default function EventDetailPage() {
                     disabled={sendingMessage || !eventMessage.trim()}
                     className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
                   >
-                    {sendingMessage ? "Sending…" : `Send to ${textableRsvps.length} ${textableRsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+                    {sendingMessage
+                      ? "Sending…"
+                      : textSelectedIds.size > 0
+                      ? `Send to ${textSelectedIds.size} Selected`
+                      : `Send to All ${textableRsvps.length} ${textableRsvps.length === 1 ? "RSVP" : "RSVPs"}`}
                   </button>
                 </>
               )}

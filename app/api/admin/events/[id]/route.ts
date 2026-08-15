@@ -28,13 +28,24 @@ export async function GET(
 
   const { data: rsvps, error: rsvpError } = await supabase
     .from("rsvps")
-    .select("*, contacts(name, email, phone, ig_handle, gender_override)")
+    .select("*, contacts(id, name, email, phone, ig_handle, gender_override)")
     .eq("event_id", id)
     .order("created_at", { ascending: true });
 
   if (rsvpError) {
     return NextResponse.json({ error: rsvpError.message }, { status: 500 });
   }
+
+  const { data: textBlasts, error: textBlastsError } = await supabase
+    .from("event_text_blasts")
+    .select("contact_id")
+    .eq("event_id", id);
+
+  if (textBlastsError) {
+    return NextResponse.json({ error: textBlastsError.message }, { status: 500 });
+  }
+
+  const textBlastSentIds = (textBlasts ?? []).map((t) => t.contact_id);
 
   const { data: waitlist, error: wlError } = await supabase
     .from("waitlist")
@@ -85,7 +96,7 @@ export async function GET(
     genderBreakdown[gender]++;
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, genderBreakdown });
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, genderBreakdown, textBlastSentIds });
 }
 
 export async function PATCH(
