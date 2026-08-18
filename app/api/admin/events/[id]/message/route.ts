@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -21,6 +22,16 @@ export async function POST(
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
   }
 
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("title, date, location")
+    .eq("id", id)
+    .single();
+
+  if (eventError || !event) {
+    return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
   const { data: rsvps, error } = await supabase
     .from("rsvps")
     .select("contacts(id, name, phone, sms_opted_out)")
@@ -33,6 +44,13 @@ export async function POST(
   const recipientIds: Set<string> | null = Array.isArray(contact_ids) && contact_ids.length > 0
     ? new Set(contact_ids)
     : null;
+
+  const eventDateTime = new Date(event.date);
+  const messageWithEventInfo = message
+    .replace(/\{event\}/gi, event.title)
+    .replace(/\{date\}/gi, formatEventDateShort(eventDateTime))
+    .replace(/\{door_time\}/gi, formatDoorTime(eventDateTime))
+    .replace(/\{address\}/gi, event.location || "the venue");
 
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
@@ -48,8 +66,10 @@ export async function POST(
     if (recipientIds && !recipientIds.has(contact.id)) continue;
 
     try {
+      const firstName = contact.name.split(" ")[0];
+      const personalized = messageWithEventInfo.replace(/\{name\}/gi, firstName);
       await client.messages.create({
-        body: `${message}\n\nReply STOP to opt out`,
+        body: `${personalized}\n\nReply STOP to opt out`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone,
       });

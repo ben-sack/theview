@@ -78,30 +78,41 @@ export default function EventDetailPage() {
   const [textBlastSentIds, setTextBlastSentIds] = useState<Set<string>>(new Set());
   const [textSelectedIds, setTextSelectedIds] = useState<Set<string>>(new Set());
   const [textFilter, setTextFilter] = useState<"all" | "not_sent" | "sent">("all");
+  const [blastSaving, setBlastSaving] = useState(false);
+  const [blastSaved, setBlastSaved] = useState(false);
+  const [eventMessageSaving, setEventMessageSaving] = useState(false);
+  const [eventMessageSaved, setEventMessageSaved] = useState(false);
+  const [panelSearch, setPanelSearch] = useState("");
+  const [panelSort, setPanelSort] = useState<"date" | "alpha">("date");
 
   function loadEvent(isInitial: boolean) {
-    fetch(`/api/admin/events/${id}`)
-      .then((r) => {
-        if (r.status === 401) { router.push("/admin"); return null; }
-        return r.json();
-      })
-      .then((d) => {
-        if (!d) return;
-        setEvent(d.event);
-        setRsvps(d.rsvps ?? []);
-        setWaitlist(d.waitlist ?? []);
-        setInviteCandidates(d.inviteCandidates ?? []);
-        setGenderBreakdown(d.genderBreakdown ?? null);
-        setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
-        if (isInitial) {
-          const ev = d.event;
-          const eventDate = new Date(ev.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
-          setBlastTemplate(`Hey {name}, you're invited to ${ev.title} on ${eventDate}. Spots are limited — RSVP here to claim yours: {rsvp_link}`);
-          const addressLine = ev.location ? ` Here is the address: ${ev.location}.` : "";
-          setEventMessage(`Hey, just a reminder that doors open at ${formatDoorTime(new Date(ev.date))} this Saturday.${addressLine} Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`);
-          setLoading(false);
-        }
-      });
+    const eventPromise = fetch(`/api/admin/events/${id}`).then((r) => {
+      if (r.status === 401) { router.push("/admin"); return null; }
+      return r.json();
+    });
+
+    const settingsPromise = isInitial ? fetch("/api/admin/settings").then((r) => r.json()) : Promise.resolve(null);
+
+    Promise.all([eventPromise, settingsPromise]).then(([d, settings]) => {
+      if (!d) return;
+      setEvent(d.event);
+      setRsvps(d.rsvps ?? []);
+      setWaitlist(d.waitlist ?? []);
+      setInviteCandidates(d.inviteCandidates ?? []);
+      setGenderBreakdown(d.genderBreakdown ?? null);
+      setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
+      if (isInitial) {
+        setBlastTemplate(
+          settings?.rsvp_blast_default_template ||
+          `Hey {name}, you're invited to {event} on {date}. Spots are limited — RSVP here to claim yours: {rsvp_link}`
+        );
+        setEventMessage(
+          settings?.event_text_blast_default_template ||
+          `Hey, just a reminder that doors open at {door_time} this Saturday. Here is the address: {address}. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`
+        );
+        setLoading(false);
+      }
+    });
   }
 
   useEffect(() => {
@@ -164,6 +175,30 @@ export default function EventDetailPage() {
       setTextSelectedIds(new Set());
       loadEvent(false);
     }
+  }
+
+  async function saveBlastDefault() {
+    setBlastSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "rsvp_blast_default_template", value: blastTemplate }),
+    });
+    setBlastSaving(false);
+    setBlastSaved(true);
+    setTimeout(() => setBlastSaved(false), 3000);
+  }
+
+  async function saveEventMessageDefault() {
+    setEventMessageSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "event_text_blast_default_template", value: eventMessage }),
+    });
+    setEventMessageSaving(false);
+    setEventMessageSaved(true);
+    setTimeout(() => setEventMessageSaved(false), 3000);
   }
 
   async function sendBlast() {
@@ -259,6 +294,41 @@ export default function EventDetailPage() {
 
   if (!event) return null;
 
+  function getRsvpName(r: Rsvp) {
+    return r.contacts?.name ?? r.guest_name ?? "Guest";
+  }
+
+  function igUrl(handle: string) {
+    return `https://instagram.com/${handle.replace(/^@/, "")}`;
+  }
+
+  const panelQuery = panelSearch.trim().toLowerCase();
+
+  const filteredRsvps = rsvps.filter((r) => {
+    if (!panelQuery) return true;
+    const name = getRsvpName(r).toLowerCase();
+    const handle = (r.contacts?.ig_handle ?? "").toLowerCase();
+    return name.includes(panelQuery) || handle.includes(panelQuery);
+  });
+  const sortedRsvps = [...filteredRsvps].sort((a, b) =>
+    panelSort === "alpha"
+      ? getRsvpName(a).localeCompare(getRsvpName(b))
+      : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  const waitlistPositions = new Map(waitlist.map((w, i) => [w.id, i + 1]));
+  const filteredWaitlist = waitlist.filter((w) => {
+    if (!panelQuery) return true;
+    const name = w.contacts.name.toLowerCase();
+    const handle = (w.contacts.ig_handle ?? "").toLowerCase();
+    return name.includes(panelQuery) || handle.includes(panelQuery);
+  });
+  const sortedWaitlist = [...filteredWaitlist].sort((a, b) =>
+    panelSort === "alpha"
+      ? a.contacts.name.localeCompare(b.contacts.name)
+      : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
   const guestListPanel = (
     <div className="bg-white rounded-lg border border-tan/20 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-tan/20 flex items-center justify-between">
@@ -303,71 +373,130 @@ export default function EventDetailPage() {
         </div>
       </div>
 
-      {guestListOpen && (!showWaitlist ? (
-        rsvps.length === 0 ? (
-          <p className="font-body text-sm text-tan italic px-5 py-6 text-center">No RSVPs yet.</p>
-        ) : (
-          <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
-            {rsvps.map((r) => (
-              <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-body text-sm font-medium text-espresso truncate">{r.contacts?.name ?? r.guest_name ?? "Guest"}</p>
-                  {r.party_size > 1 && (
-                    <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
-                  )}
-                </div>
-                <p className="font-body text-xs text-tan truncate">{r.contacts ? (r.contacts.ig_handle ?? r.contacts.email) : "Walk-in (door add)"}</p>
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="font-body text-xs text-tan/50">
-                    {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => removeRsvp(r.id, r.contacts?.name ?? r.guest_name ?? "this guest")}
-                    disabled={removingRsvpId === r.id}
-                    className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40 shrink-0"
-                  >
-                    {removingRsvpId === r.id ? "Removing…" : "Remove"}
-                  </button>
-                </div>
-              </div>
-            ))}
+      {guestListOpen && (
+        <>
+          <div className="px-5 py-3 border-b border-tan/20 space-y-2">
+            <input
+              type="text"
+              placeholder="Search by name or @handle…"
+              value={panelSearch}
+              onChange={(e) => setPanelSearch(e.target.value)}
+              className="w-full bg-ivory border border-tan/20 rounded px-3 py-2 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust"
+            />
+            <div className="flex items-center gap-1">
+              <span className="font-body text-[11px] text-tan/60 mr-1">Sort</span>
+              {([["date", "Date"], ["alpha", "A–Z"]] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setPanelSort(v)}
+                  className={`font-body text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                    panelSort === v ? "bg-espresso text-ivory border-espresso" : "border-tan/30 text-tan hover:border-tan/50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )
-      ) : (
-        waitlist.length === 0 ? (
-          <p className="font-body text-sm text-tan italic px-5 py-6 text-center">Waitlist is empty.</p>
-        ) : (
-          <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
-            {waitlist.map((w, i) => (
-              <div key={w.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-body text-xs text-tan/50 shrink-0">#{i + 1}</span>
-                      <p className="font-body text-sm font-medium text-espresso truncate">{w.contacts.name}</p>
-                      {w.party_size > 1 && (
-                        <span className="font-body text-xs text-tan shrink-0">+{w.party_size - 1}</span>
+
+          {!showWaitlist ? (
+            sortedRsvps.length === 0 ? (
+              <p className="font-body text-sm text-tan italic px-5 py-6 text-center">{panelQuery ? "No matches." : "No RSVPs yet."}</p>
+            ) : (
+              <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+                {sortedRsvps.map((r) => (
+                  <div key={r.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-body text-sm font-medium text-espresso truncate">{getRsvpName(r)}</p>
+                      {r.party_size > 1 && (
+                        <span className="font-body text-xs text-tan shrink-0">+{r.party_size - 1}</span>
                       )}
                     </div>
-                    <p className="font-body text-xs text-tan truncate">{w.contacts.ig_handle ?? w.contacts.email}</p>
-                    <p className="font-body text-xs text-tan/50 mt-0.5">
-                      Joined {new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    <p className="font-body text-xs text-tan truncate">
+                      {r.contacts ? (
+                        r.contacts.ig_handle ? (
+                          <a
+                            href={igUrl(r.contacts.ig_handle)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-rust hover:underline"
+                          >
+                            @{r.contacts.ig_handle.replace(/^@/, "")}
+                          </a>
+                        ) : (
+                          r.contacts.email
+                        )
+                      ) : (
+                        "Walk-in (door add)"
+                      )}
                     </p>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className="font-body text-xs text-tan/50">
+                        {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => removeRsvp(r.id, getRsvpName(r))}
+                        disabled={removingRsvpId === r.id}
+                        className="font-body text-xs text-rust/50 hover:text-rust transition-colors disabled:opacity-40 shrink-0"
+                      >
+                        {removingRsvpId === r.id ? "Removing…" : "Remove"}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => promoteFromWaitlist(w.id)}
-                    disabled={promotingId === w.id}
-                    className="shrink-0 font-body text-xs px-2.5 py-1 bg-espresso text-ivory rounded hover:bg-rust transition-colors disabled:opacity-50 mt-0.5"
-                  >
-                    {promotingId === w.id ? "…" : "Admit"}
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )
-      ))}
+            )
+          ) : (
+            sortedWaitlist.length === 0 ? (
+              <p className="font-body text-sm text-tan italic px-5 py-6 text-center">{panelQuery ? "No matches." : "Waitlist is empty."}</p>
+            ) : (
+              <div className="overflow-y-auto max-h-[calc(100vh-12rem)] divide-y divide-tan/10">
+                {sortedWaitlist.map((w) => (
+                  <div key={w.id} className="px-5 py-3 hover:bg-ivory/60 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-body text-xs text-tan/50 shrink-0">#{waitlistPositions.get(w.id)}</span>
+                          <p className="font-body text-sm font-medium text-espresso truncate">{w.contacts.name}</p>
+                          {w.party_size > 1 && (
+                            <span className="font-body text-xs text-tan shrink-0">+{w.party_size - 1}</span>
+                          )}
+                        </div>
+                        <p className="font-body text-xs text-tan truncate">
+                          {w.contacts.ig_handle ? (
+                            <a
+                              href={igUrl(w.contacts.ig_handle)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-rust hover:underline"
+                            >
+                              @{w.contacts.ig_handle.replace(/^@/, "")}
+                            </a>
+                          ) : (
+                            w.contacts.email
+                          )}
+                        </p>
+                        <p className="font-body text-xs text-tan/50 mt-0.5">
+                          Joined {new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => promoteFromWaitlist(w.id)}
+                        disabled={promotingId === w.id}
+                        className="shrink-0 font-body text-xs px-2.5 py-1 bg-espresso text-ivory rounded hover:bg-rust transition-colors disabled:opacity-50 mt-0.5"
+                      >
+                        {promotingId === w.id ? "…" : "Admit"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </>
+      )}
     </div>
   );
 
@@ -472,8 +601,10 @@ export default function EventDetailPage() {
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
                     Sends a personalized invite. Leave everyone unselected below to send to all approved members, or pick specific people. Use{" "}
-                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span> for their first name and{" "}
-                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> for their unique RSVP link.
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span>,{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{event}"}</span>,{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{date}"}</span>, and{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{rsvp_link}"}</span> to personalize it.
                   </p>
                   <div className="space-y-1">
                     <textarea
@@ -488,6 +619,14 @@ export default function EventDetailPage() {
                         <span>Est. cost: <strong className="text-espresso">${blastCost}</strong></span>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={saveBlastDefault}
+                      disabled={blastSaving || !blastTemplate.trim()}
+                      className="font-body text-xs text-rust hover:underline disabled:opacity-40"
+                    >
+                      {blastSaving ? "Saving…" : blastSaved ? "Saved as default ✓" : "Save as default"}
+                    </button>
                   </div>
 
                   {/* Recipient selection */}
@@ -590,7 +729,12 @@ export default function EventDetailPage() {
               {textBlastOpen && (
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
-                    Sends only to people who've RSVP'd and have a phone on file. Leave everyone unselected to send to all {textableRsvps.length}, or pick specific people — handy for catching up latecomers after an earlier send.
+                    Sends only to people who've RSVP'd and have a phone on file. Leave everyone unselected to send to all {textableRsvps.length}, or pick specific people — handy for catching up latecomers after an earlier send. Use{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span>,{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{event}"}</span>,{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{date}"}</span>,{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{door_time}"}</span>, and{" "}
+                    <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{address}"}</span> to personalize it.
                   </p>
                   <div className="space-y-1">
                     <textarea
@@ -606,6 +750,14 @@ export default function EventDetailPage() {
                         <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong></span>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={saveEventMessageDefault}
+                      disabled={eventMessageSaving || !eventMessage.trim()}
+                      className="font-body text-xs text-rust hover:underline disabled:opacity-40"
+                    >
+                      {eventMessageSaving ? "Saving…" : eventMessageSaved ? "Saved as default ✓" : "Save as default"}
+                    </button>
                   </div>
 
                   {/* Recipient selection */}
@@ -701,19 +853,6 @@ export default function EventDetailPage() {
       </main>
     </div>
   );
-}
-
-function formatDoorTime(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "America/Los_Angeles",
-  }).formatToParts(date);
-  const hour = parts.find((p) => p.type === "hour")?.value ?? "";
-  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
-  const ampm = parts.find((p) => p.type === "dayPeriod")?.value ?? "";
-  return minute === "00" ? `${hour}${ampm}` : `${hour}:${minute}${ampm}`;
 }
 
 const TWILIO_PRICE_PER_SEGMENT = 0.0079;

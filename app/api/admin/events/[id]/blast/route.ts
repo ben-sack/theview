@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getRsvpShortLink } from "@/lib/shortLink";
+import { formatEventDateShort } from "@/lib/messageFormat";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -45,15 +46,12 @@ export async function POST(
     return NextResponse.json({ error: contactsError.message }, { status: 500 });
   }
 
-  const eventDate = new Date(event.date).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/Los_Angeles",
-  });
+  const eventDate = formatEventDateShort(new Date(event.date));
 
-  const defaultTemplate = `Hey {name}, you're invited to ${event.title} on ${eventDate}. Spots are limited — RSVP here to claim yours: {rsvp_link}`;
-  const template = message_template?.trim() || defaultTemplate;
+  const defaultTemplate = `Hey {name}, you're invited to {event} on {date}. Spots are limited — RSVP here to claim yours: {rsvp_link}`;
+  const template = (message_template?.trim() || defaultTemplate)
+    .replace(/\{event\}/gi, event.title)
+    .replace(/\{date\}/gi, eventDate);
 
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
