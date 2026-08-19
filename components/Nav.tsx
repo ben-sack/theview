@@ -29,17 +29,17 @@ export function Nav() {
       }`}
     >
       {/* Left: wordmark */}
-      <span className="font-body text-[10px] tracking-[0.32em] uppercase text-cream/50 select-none">
+      <span className="shrink-0 whitespace-nowrap font-body text-[10px] tracking-[0.32em] uppercase text-cream/50 select-none">
         The View
       </span>
 
       {/* Right: CTAs */}
-      <nav className="flex items-center gap-1 md:gap-5">
+      <nav className="flex items-center gap-x-0.5 md:gap-5">
         {membersEnabled && (
           <>
             <a
               href="/members"
-              className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+              className="font-body text-[10px] tracking-[0.06em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
             >
               Members
             </a>
@@ -50,7 +50,7 @@ export function Nav() {
           <>
             <a
               href="/bookings"
-              className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+              className="font-body text-[10px] tracking-[0.06em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
             >
               Bookings
             </a>
@@ -59,7 +59,7 @@ export function Nav() {
         )}
         <a
           href="#access"
-          className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+          className="font-body text-[10px] tracking-[0.06em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
         >
           <span className="md:hidden">Apply</span>
           <span className="hidden md:inline">Request Access</span>
@@ -67,7 +67,7 @@ export function Nav() {
         <span className="text-rust/30 text-xs">/</span>
         <a
           href="/privacy"
-          className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+          className="font-body text-[10px] tracking-[0.06em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
         >
           <span className="md:hidden">Privacy</span>
           <span className="hidden md:inline">Privacy Policy</span>
