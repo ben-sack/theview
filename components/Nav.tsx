@@ -24,12 +24,12 @@ export function Nav() {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 md:px-10 py-6 transition-opacity duration-700 ${
+      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-end md:justify-between px-6 md:px-10 py-6 transition-opacity duration-700 ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
       {/* Left: wordmark */}
-      <span className="font-body text-[10px] tracking-[0.32em] uppercase text-cream/50 select-none">
+      <span className="hidden md:inline font-body text-[10px] tracking-[0.32em] uppercase text-cream/50 select-none">
         The View
       </span>
 
