@@ -4,11 +4,16 @@ import { useEffect, useState } from "react";
 export function Nav() {
   const [visible, setVisible] = useState(false);
   const [membersEnabled, setMembersEnabled] = useState(true);
+  const [bookingsEnabled, setBookingsEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/members-portal-status")
       .then((r) => r.json())
       .then((d) => setMembersEnabled(!!d.enabled))
+      .catch(() => {});
+    fetch("/api/bookings-nav-status")
+      .then((r) => r.json())
+      .then((d) => setBookingsEnabled(!!d.enabled))
       .catch(() => {});
   }, []);
 
@@ -37,6 +42,17 @@ export function Nav() {
               className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
             >
               Members
+            </a>
+            <span className="text-rust/30 text-xs">/</span>
+          </>
+        )}
+        {bookingsEnabled && (
+          <>
+            <a
+              href="/bookings"
+              className="font-body text-[10px] tracking-[0.15em] md:tracking-[0.28em] uppercase text-cream/50 hover:text-cream/90 transition-colors"
+            >
+              Bookings
             </a>
             <span className="text-rust/30 text-xs">/</span>
           </>

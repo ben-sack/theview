@@ -20,9 +20,9 @@ type Contact = {
   sms_opted_out: boolean;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "message" | "blast" | "referrals" | "settings";
+type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "message" | "blast" | "referrals" | "settings";
 
-const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "message", "blast", "referrals", "settings"];
+const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "bookings", "message", "blast", "referrals", "settings"];
 
 export default function AdminPage() {
   return (
@@ -52,7 +52,7 @@ function AdminPageInner() {
   const [pendingCount, setPendingCount] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery") return;
+    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery" || status === "bookings") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -209,6 +209,7 @@ function AdminPageInner() {
     rejected: "Rejected",
     events: "Events",
     gallery: "Gallery",
+    bookings: "Bookings",
     message: "Automated Messages",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -269,6 +270,8 @@ function AdminPageInner() {
           <EventsTab />
         ) : tab === "gallery" ? (
           <GalleryTab />
+        ) : tab === "bookings" ? (
+          <BookingsTab />
         ) : tab === "blast" ? (
           <TextBlastTab />
         ) : tab === "referrals" ? (
@@ -1494,6 +1497,109 @@ function GalleryTab() {
   );
 }
 
+type BookingRequest = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  event_type: string;
+  event_date: string;
+  backup_date: string | null;
+  guest_count: number;
+  time_block: string | null;
+  wants_bartender: boolean;
+  wants_security: boolean;
+  wants_dj: boolean;
+  budget_range: string | null;
+  notes: string | null;
+  status: "new" | "contacted" | "booked" | "declined";
+  created_at: string;
+};
+
+const BOOKING_STATUSES: BookingRequest["status"][] = ["new", "contacted", "booked", "declined"];
+
+function BookingsTab() {
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/bookings")
+      .then((r) => r.json())
+      .then((d) => { setBookings(d.bookings ?? []); setLoading(false); });
+  }, []);
+
+  async function updateStatus(id: string, status: BookingRequest["status"]) {
+    setUpdating(id);
+    await fetch(`/api/admin/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+    setUpdating(null);
+  }
+
+  function addOnsList(b: BookingRequest) {
+    const list = [b.wants_bartender && "Bartender", b.wants_security && "Security", b.wants_dj && "DJ"].filter(Boolean);
+    return list.length > 0 ? list.join(", ") : "—";
+  }
+
+  if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
+
+  if (bookings.length === 0) {
+    return <p className="font-body text-base text-tan italic">No booking requests yet.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto bg-white rounded-lg border border-tan/20 shadow-sm">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
+            {["Name", "Contact", "Event", "Date", "Guests", "Time", "Add-Ons", "Budget", "Notes", "Submitted", "Status"].map((h) => (
+              <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {bookings.map((b) => (
+            <tr key={b.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+              <td className="font-body text-xs sm:text-sm font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.name}</td>
+              <td className="font-body text-xs text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                <div>{b.email}</div>
+                <div>{b.phone}</div>
+              </td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.event_type}</td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                <div>{formatDateShort(b.event_date)}</div>
+                {b.backup_date && <div className="text-tan/50">bkup {formatDateShort(b.backup_date)}</div>}
+              </td>
+              <td className="font-body text-xs sm:text-sm text-espresso font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">{b.guest_count}</td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.time_block ?? "—"}</td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{addOnsList(b)}</td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.budget_range ?? "—"}</td>
+              <td className="font-body text-xs text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center max-w-[16rem]">{b.notes ?? "—"}</td>
+              <td className="font-body text-xs text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{formatDateShort(b.created_at)}</td>
+              <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                <select
+                  value={b.status}
+                  disabled={updating === b.id}
+                  onChange={(e) => updateStatus(b.id, e.target.value as BookingRequest["status"])}
+                  className="font-body text-xs border border-tan/30 rounded px-2 py-1 text-espresso focus:outline-none focus:border-rust disabled:opacity-50"
+                >
+                  {BOOKING_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ReferralsTab() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1815,20 +1921,54 @@ function SettingsTab() {
   const [portalEnabled, setPortalEnabled] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [bookingsNavEnabled, setBookingsNavEnabled] = useState<boolean | null>(null);
+  const [bookingsNavSaving, setBookingsNavSaving] = useState(false);
+
   const [inviteTemplate, setInviteTemplate] = useState("");
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteSaved, setInviteSaved] = useState(false);
+
+  const [notificationPhone, setNotificationPhone] = useState("");
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [notificationSaved, setNotificationSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((d) => {
         setPortalEnabled(d.members_portal_enabled === "true");
+        setBookingsNavEnabled(d.bookings_nav_enabled === "true");
         setInviteTemplate(
           d.invite_sms_template ?? "You should apply for The View — a members-only night out. {link}"
         );
+        setNotificationPhone(d.booking_notification_phone ?? "");
       });
   }, []);
+
+  async function toggleBookingsNav() {
+    if (bookingsNavEnabled === null) return;
+    setBookingsNavSaving(true);
+    const newVal = !bookingsNavEnabled;
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "bookings_nav_enabled", value: String(newVal) }),
+    });
+    setBookingsNavEnabled(newVal);
+    setBookingsNavSaving(false);
+  }
+
+  async function saveNotificationPhone() {
+    setNotificationSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "booking_notification_phone", value: notificationPhone }),
+    });
+    setNotificationSaving(false);
+    setNotificationSaved(true);
+    setTimeout(() => setNotificationSaved(false), 3000);
+  }
 
   async function togglePortal() {
     if (portalEnabled === null) return;
@@ -1885,6 +2025,31 @@ function SettingsTab() {
       </div>
 
       <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="font-body text-sm font-medium text-espresso">Bookings Nav Link</p>
+            <p className="font-body text-xs text-tan leading-relaxed">
+              When enabled, a "Bookings" link appears in the main site nav pointing to{" "}
+              <span className="font-mono text-espresso">theview.la/bookings</span>. When disabled, the page
+              still works for anyone with the direct link — it's just not linked from the site.
+            </p>
+          </div>
+          <button
+            onClick={toggleBookingsNav}
+            disabled={bookingsNavSaving || bookingsNavEnabled === null}
+            className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${bookingsNavEnabled ? "bg-espresso" : "bg-tan/30"}`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${bookingsNavEnabled ? "translate-x-6" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
+        <p className={`font-body text-xs font-medium ${bookingsNavEnabled ? "text-green-600" : "text-tan/50"}`}>
+          {bookingsNavEnabled === null ? "Loading…" : bookingsNavEnabled ? "Link is showing" : "Link is hidden"}
+        </p>
+      </div>
+
+      <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
         <div className="space-y-1">
           <p className="font-body text-sm font-medium text-espresso">Invite a Friend Text</p>
           <p className="font-body text-xs text-tan leading-relaxed">
@@ -1911,6 +2076,32 @@ function SettingsTab() {
           className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
         >
           {inviteSaving ? "Saving…" : inviteSaved ? "Saved ✓" : "Save Message"}
+        </button>
+      </div>
+
+      <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+        <div className="space-y-1">
+          <p className="font-body text-sm font-medium text-espresso">Booking Request Alerts</p>
+          <p className="font-body text-xs text-tan leading-relaxed">
+            Get a text at this number whenever someone submits a request on{" "}
+            <span className="font-mono text-espresso">theview.la/bookings</span>. Leave blank to turn off.
+          </p>
+        </div>
+
+        <input
+          type="tel"
+          value={notificationPhone}
+          onChange={(e) => setNotificationPhone(e.target.value)}
+          placeholder="+13105551234"
+          className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust"
+        />
+
+        <button
+          onClick={saveNotificationPhone}
+          disabled={notificationSaving}
+          className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+        >
+          {notificationSaving ? "Saving…" : notificationSaved ? "Saved ✓" : "Save Number"}
         </button>
       </div>
     </div>
