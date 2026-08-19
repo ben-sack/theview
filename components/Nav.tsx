@@ -29,7 +29,7 @@ export function Nav() {
       }`}
     >
       {/* Left: wordmark */}
-      <span className="shrink-0 whitespace-nowrap font-body text-[10px] tracking-[0.32em] uppercase text-cream/50 select-none">
+      <span className="shrink-0 whitespace-nowrap font-body text-[10px] tracking-[0.06em] md:tracking-[0.32em] uppercase text-cream/50 select-none">
         The View
       </span>
 
