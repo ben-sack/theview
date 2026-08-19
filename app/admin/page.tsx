@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { GALLERY_MAX_PHOTOS } from "@/lib/gallery";
+import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 
 type Contact = {
   id: string;
@@ -18,9 +20,9 @@ type Contact = {
   sms_opted_out: boolean;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "events" | "message" | "blast" | "referrals" | "settings";
+type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "message" | "blast" | "referrals" | "settings";
 
-const TABS: Tab[] = ["pending", "approved", "rejected", "events", "message", "blast", "referrals", "settings"];
+const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "message", "blast", "referrals", "settings"];
 
 export default function AdminPage() {
   return (
@@ -50,7 +52,7 @@ function AdminPageInner() {
   const [pendingCount, setPendingCount] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events") return;
+    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -206,6 +208,7 @@ function AdminPageInner() {
     approved: "Members",
     rejected: "Rejected",
     events: "Events",
+    gallery: "Gallery",
     message: "Automated Messages",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -264,6 +267,8 @@ function AdminPageInner() {
           <RejectedTab />
         ) : tab === "events" ? (
           <EventsTab />
+        ) : tab === "gallery" ? (
+          <GalleryTab />
         ) : tab === "blast" ? (
           <TextBlastTab />
         ) : tab === "referrals" ? (
@@ -1299,6 +1304,192 @@ function EventsTab() {
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+type GalleryPhoto = { id: string; url: string; width: number; height: number };
+
+function resizeImage(file: File, maxDim = 1600, quality = 0.82): Promise<{ blob: Blob; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas not supported.")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        if (!blob) { reject(new Error("Could not process image.")); return; }
+        resolve({ blob, width, height });
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not load image.")); };
+    img.src = url;
+  });
+}
+
+function GalleryTab() {
+  const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/gallery")
+      .then((r) => r.json())
+      .then((d) => { setPhotos(d.photos ?? []); setLoading(false); });
+
+    fetch("/api/admin/events")
+      .then((r) => r.json())
+      .then((d) => {
+        const evs: AdminEvent[] = d.events ?? [];
+        setEvents(evs);
+        const now = new Date();
+        const mostRecentPast = evs
+          .filter((ev) => new Date(ev.date) < now)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        if (mostRecentPast) setSelectedEventId(mostRecentPast.id);
+      });
+  }, []);
+
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0 || !selectedEventId) return;
+    setUploading(true);
+    setUploadError("");
+    let count = photos.length;
+    for (const file of Array.from(fileList)) {
+      if (count >= GALLERY_MAX_PHOTOS) {
+        setUploadError(`Gallery is at its ${GALLERY_MAX_PHOTOS}-photo cap.`);
+        break;
+      }
+      try {
+        const { blob, width, height } = await resizeImage(file);
+        const form = new FormData();
+        form.append("file", blob, "photo.jpg");
+        form.append("event_id", selectedEventId);
+        form.append("width", String(width));
+        form.append("height", String(height));
+        const res = await fetch("/api/admin/gallery", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) { setUploadError(data.error ?? "Upload failed."); break; }
+        setPhotos((prev) => [...prev, data.photo]);
+        count++;
+      } catch {
+        setUploadError("Could not process one of the images.");
+        break;
+      }
+    }
+    setUploading(false);
+  }
+
+  async function deletePhoto(id: string) {
+    setDeleting(id);
+    await fetch(`/api/admin/gallery/${id}`, { method: "DELETE" });
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+    setDeleting(null);
+  }
+
+  async function clearGallery() {
+    if (!confirm(`Delete all ${photos.length} photos in the gallery? This can't be undone — make sure they're archived elsewhere first.`)) return;
+    setClearing(true);
+    await fetch("/api/admin/gallery/clear", { method: "POST" });
+    setPhotos([]);
+    setClearing(false);
+  }
+
+  const now = new Date();
+  const pastEvents = events
+    .filter((ev) => new Date(ev.date) < now)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <label className="font-body text-xs tracking-widest uppercase text-tan">Event</label>
+          <select
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="w-full sm:w-72 border border-tan/30 bg-white rounded px-3 py-2 text-sm text-espresso focus:outline-none focus:border-rust"
+          >
+            {pastEvents.length === 0 && <option value="">No past events yet</option>}
+            {pastEvents.map((ev) => (
+              <option key={ev.id} value={ev.id}>{ev.title} — {formatDateShort(ev.date)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-4">
+          <p className="font-body text-xs text-tan whitespace-nowrap">{photos.length} / {GALLERY_MAX_PHOTOS} photos</p>
+          <label
+            className={`font-body text-sm font-medium px-5 py-2.5 rounded transition-colors duration-200 whitespace-nowrap ${
+              uploading || !selectedEventId || photos.length >= GALLERY_MAX_PHOTOS
+                ? "bg-tan/30 text-white/70 pointer-events-none"
+                : "bg-espresso text-ivory hover:bg-rust cursor-pointer"
+            }`}
+          >
+            {uploading ? "Uploading…" : "+ Upload Photos"}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              disabled={uploading || !selectedEventId}
+              onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+            />
+          </label>
+        </div>
+      </div>
+
+      {uploadError && <p className="font-body text-sm text-rust">{uploadError}</p>}
+
+      {photos.length > 0 && (
+        <button
+          onClick={clearGallery}
+          disabled={clearing}
+          className="font-body text-xs tracking-widest uppercase text-rust/70 hover:text-rust transition-colors disabled:opacity-50"
+        >
+          {clearing ? "Clearing…" : "Clear Gallery (start next rotation)"}
+        </button>
+      )}
+
+      {photos.length === 0 ? (
+        <p className="font-body text-base text-tan italic">No photos uploaded yet.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {photos.map((p) => (
+            <div key={p.id} className="relative group aspect-square rounded overflow-hidden bg-tan/10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url} alt="" className="w-full h-full object-cover" />
+              <WatermarkOverlay />
+              <button
+                onClick={() => deletePhoto(p.id)}
+                disabled={deleting === p.id}
+                className="absolute inset-0 bg-espresso/0 group-hover:bg-espresso/60 transition-colors duration-200 flex items-center justify-center"
+              >
+                <span className="font-body text-xs tracking-widest uppercase text-ivory opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {deleting === p.id ? "Deleting…" : "Delete"}
+                </span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
