@@ -36,6 +36,7 @@ type WaitlistEntry = {
     email: string;
     phone: string | null;
     ig_handle: string | null;
+    referred_by: string | null;
   };
 };
 
@@ -232,7 +233,23 @@ export default function EventDetailPage() {
       const promoted = waitlist.find((w) => w.id === waitlistId);
       if (promoted) {
         setWaitlist((prev) => prev.filter((w) => w.id !== waitlistId));
-        setRsvps((prev) => [...prev, { ...promoted, checked_in: false } as Rsvp]);
+        setRsvps((prev) => [
+          ...prev,
+          {
+            id: promoted.id,
+            party_size: promoted.party_size,
+            checked_in: false,
+            created_at: promoted.created_at,
+            guest_name: null,
+            contacts: {
+              id: "",
+              name: promoted.contacts.name,
+              email: promoted.contacts.email,
+              phone: promoted.contacts.phone,
+              ig_handle: promoted.contacts.ig_handle,
+            },
+          },
+        ]);
       }
     }
     setPromotingId(null);
@@ -476,6 +493,9 @@ export default function EventDetailPage() {
                             </a>
                           ) : (
                             w.contacts.email
+                          )}
+                          {w.contacts.referred_by && (
+                            <span className="text-tan/50"> · via {w.contacts.referred_by}</span>
                           )}
                         </p>
                         <p className="font-body text-xs text-tan/50 mt-0.5">

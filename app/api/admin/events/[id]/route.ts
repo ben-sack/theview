@@ -49,7 +49,7 @@ export async function GET(
 
   const { data: waitlist, error: wlError } = await supabase
     .from("waitlist")
-    .select("*, contacts(name, email, phone, ig_handle)")
+    .select("*, contacts(name, email, phone, ig_handle, referred_by)")
     .eq("event_id", id)
     .order("created_at", { ascending: true });
 
