@@ -10,17 +10,24 @@ export async function POST(req: NextRequest) {
     phone,
     event_type,
     event_date,
-    backup_date,
     guest_count,
     time_block,
     wants_bartender,
     wants_security,
     wants_dj,
-    budget_range,
     notes,
   } = body;
 
-  if (!name?.trim() || !email?.trim() || !phone?.trim() || !event_type || !event_date || !guest_count) {
+  if (
+    !name?.trim() ||
+    !email?.trim() ||
+    !phone?.trim() ||
+    !event_type ||
+    !event_date ||
+    !guest_count ||
+    !time_block?.trim() ||
+    !notes?.trim()
+  ) {
     return NextResponse.json({ error: "Please fill out all required fields." }, { status: 400 });
   }
 
@@ -33,14 +40,12 @@ export async function POST(req: NextRequest) {
         phone: phone.trim(),
         event_type,
         event_date,
-        backup_date: backup_date || null,
         guest_count: Number(guest_count),
-        time_block: time_block || null,
+        time_block: time_block.trim(),
         wants_bartender: !!wants_bartender,
         wants_security: !!wants_security,
         wants_dj: !!wants_dj,
-        budget_range: budget_range || null,
-        notes: notes || null,
+        notes: notes.trim(),
       },
     ])
     .select("id")

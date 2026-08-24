@@ -9,13 +9,11 @@ type FormState = {
   phone: string;
   event_type: string;
   event_date: string;
-  backup_date: string;
   guest_count: string;
   time_block: string;
   wants_bartender: boolean;
   wants_security: boolean;
   wants_dj: boolean;
-  budget_range: string;
   notes: string;
 };
 
@@ -25,13 +23,11 @@ const EMPTY_FORM: FormState = {
   phone: "",
   event_type: "",
   event_date: "",
-  backup_date: "",
   guest_count: "",
   time_block: "",
   wants_bartender: false,
   wants_security: false,
   wants_dj: false,
-  budget_range: "",
   notes: "",
 };
 
@@ -101,32 +97,6 @@ export function BookingsContent() {
             </div>
           </div>
 
-          <div className="space-y-10">
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="section-rule" />
-                <h2 className="font-body text-[10px] tracking-[0.32em] uppercase text-tan/60">The Space</h2>
-              </div>
-              <ul className="font-body text-sm text-cream/60 leading-relaxed space-y-2">
-                <li>~1,800 sq ft — capacity available on request</li>
-                <li>Professional sound system with a DJ booth (Pioneer XDJ-XZ)</li>
-                <li>Full bar infrastructure</li>
-                <li>Ambient lighting throughout</li>
-              </ul>
-            </section>
-
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="section-rule" />
-                <h2 className="font-body text-[10px] tracking-[0.32em] uppercase text-tan/60">Add-Ons</h2>
-              </div>
-              <p className="font-body text-sm text-cream/60 leading-relaxed">
-                Bartenders, security, and DJs can all be arranged for your event. You're welcome to bring your own alcohol,
-                provided it's served by a licensed bartender — ours or a vetted outside one.
-              </p>
-            </section>
-          </div>
-
           <section ref={ref} className="pt-2 border-t border-rust/10 space-y-8">
             {submitted ? (
               <div className={`reveal ${v} pt-8`}>
@@ -176,24 +146,14 @@ export function BookingsContent() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                  <div className="space-y-1">
-                    <label htmlFor="event_date" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Date</label>
-                    <input className="field" id="event_date" name="event_date" type="date" required value={form.event_date} onChange={onChange} />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="backup_date" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                      Backup Date <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
-                    </label>
-                    <input className="field" id="backup_date" name="backup_date" type="date" value={form.backup_date} onChange={onChange} />
-                  </div>
+                <div className="space-y-1">
+                  <label htmlFor="event_date" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Date</label>
+                  <input className="field" id="event_date" name="event_date" type="date" required value={form.event_date} onChange={onChange} />
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="time_block" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                    Time Needed <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
-                  </label>
-                  <input className="field" id="time_block" name="time_block" type="text" value={form.time_block} onChange={onChange} placeholder="e.g. 6pm–1am" />
+                  <label htmlFor="time_block" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Time Needed</label>
+                  <input className="field" id="time_block" name="time_block" type="text" required value={form.time_block} onChange={onChange} placeholder="e.g. 6pm–1am" />
                 </div>
 
                 <div className="space-y-3">
@@ -215,24 +175,8 @@ export function BookingsContent() {
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="budget_range" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                    Budget Range <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
-                  </label>
-                  <select className="field" id="budget_range" name="budget_range" value={form.budget_range} onChange={onChange}>
-                    <option value="">Prefer not to say</option>
-                    <option value="Under $2,000">Under $2,000</option>
-                    <option value="$2,000–$4,000">$2,000–$4,000</option>
-                    <option value="$4,000–$6,000">$4,000–$6,000</option>
-                    <option value="$6,000+">$6,000+</option>
-                    <option value="Not sure yet">Not sure yet</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="notes" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">
-                    Anything else? <span className="text-cream/20 normal-case tracking-normal">(optional)</span>
-                  </label>
-                  <textarea className="field" id="notes" name="notes" rows={3} value={form.notes} onChange={onChange} placeholder="Tell us more about your event" />
+                  <label htmlFor="notes" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Details</label>
+                  <textarea className="field" id="notes" name="notes" rows={3} required value={form.notes} onChange={onChange} placeholder="Tell us more about your event" />
                 </div>
 
                 {error && <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>}
