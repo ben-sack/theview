@@ -73,24 +73,18 @@ export function BookingsContent() {
       />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-espresso/40 via-transparent to-espresso/60" />
 
-      <div className="relative z-10 px-6 py-8 md:py-12">
-        <div className="max-w-xl mx-auto space-y-8 md:space-y-10">
-          <div className="space-y-3">
+      <div className="relative z-10 px-6 py-5 md:py-8">
+        <div className="max-w-xl mx-auto space-y-4">
+          <div className="space-y-1.5">
             <a href="/" className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors">
               ← The View
             </a>
-            <div className="space-y-2">
-              <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/60">Private Events</p>
-              <h1 className="font-display italic text-3xl md:text-4xl text-ivory font-light leading-[1.15]">
-                Host your event at The View.
-              </h1>
-              <p className="font-body text-sm text-cream/50 leading-relaxed max-w-sm">
-                A private event space in Santa Monica, available to rent for parties, shoots, and private gatherings.
-              </p>
-            </div>
+            <h1 className="font-display italic text-2xl md:text-3xl text-ivory font-light leading-tight">
+              Host your event at The View.
+            </h1>
           </div>
 
-          <section ref={ref} className="pt-1 border-t border-rust/10 space-y-4">
+          <section ref={ref} className="pt-1 border-t border-rust/10">
             {submitted ? (
               <div className={`reveal ${v} pt-4`}>
                 <p className="font-display italic text-cream/60 text-2xl">
@@ -98,32 +92,25 @@ export function BookingsContent() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={onSubmit} className={`space-y-4 pt-4 reveal ${v}`} noValidate>
-                <div className="space-y-1.5">
-                  <h2 className="font-display italic text-xl text-ivory font-light">Request a Quote</h2>
-                  <p className="font-body text-xs text-cream/40 leading-relaxed">
-                    Pricing depends on your date and guest count — tell us about your event and we'll follow up with a quote.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                  <div className="space-y-1">
+              <form onSubmit={onSubmit} className={`space-y-3 pt-3 reveal ${v}`} noValidate>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="space-y-0.5">
                     <label htmlFor="name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Name</label>
                     <input className="field" id="name" name="name" type="text" required value={form.name} onChange={onChange} placeholder="Full name" />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <label htmlFor="phone" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Phone</label>
                     <input className="field" id="phone" name="phone" type="tel" required value={form.phone} onChange={onChange} placeholder="(555) 000-0000" />
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <label htmlFor="email" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Email</label>
                   <input className="field" id="email" name="email" type="email" required value={form.email} onChange={onChange} placeholder="your@email.com" />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                  <div className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="space-y-0.5">
                     <label htmlFor="event_type" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Type</label>
                     <select className="field" id="event_type" name="event_type" required value={form.event_type} onChange={onChange}>
                       <option value="" disabled>Select one</option>
@@ -133,30 +120,31 @@ export function BookingsContent() {
                       <option value="Other">Other</option>
                     </select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <label htmlFor="guest_count" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Guest Count</label>
                     <input className="field" id="guest_count" name="guest_count" type="number" min={1} required value={form.guest_count} onChange={onChange} placeholder="e.g. 80" />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="event_date" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Date</label>
-                  <input className="field" id="event_date" name="event_date" type="date" required value={form.event_date} onChange={onChange} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="space-y-0.5">
+                    <label htmlFor="event_date" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Date</label>
+                    <input className="field" id="event_date" name="event_date" type="date" required value={form.event_date} onChange={onChange} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <label htmlFor="time_block" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Time Needed</label>
+                    <input className="field" id="time_block" name="time_block" type="text" required value={form.time_block} onChange={onChange} placeholder="e.g. 6pm–1am" />
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="time_block" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Time Needed</label>
-                  <input className="field" id="time_block" name="time_block" type="text" required value={form.time_block} onChange={onChange} placeholder="e.g. 6pm–1am" />
-                </div>
-
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <label htmlFor="notes" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Details</label>
                   <textarea className="field" id="notes" name="notes" rows={2} required value={form.notes} onChange={onChange} placeholder="Tell us more about your event" />
                 </div>
 
                 {error && <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>}
 
-                <div className="pt-2">
+                <div className="pt-1">
                   <button
                     type="submit"
                     disabled={loading}
