@@ -12,9 +12,6 @@ export async function POST(req: NextRequest) {
     event_date,
     guest_count,
     time_block,
-    wants_bartender,
-    wants_security,
-    wants_dj,
     notes,
   } = body;
 
@@ -42,9 +39,6 @@ export async function POST(req: NextRequest) {
         event_date,
         guest_count: Number(guest_count),
         time_block: time_block.trim(),
-        wants_bartender: !!wants_bartender,
-        wants_security: !!wants_security,
-        wants_dj: !!wants_dj,
         notes: notes.trim(),
       },
     ])

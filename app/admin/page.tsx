@@ -1504,13 +1504,8 @@ type BookingRequest = {
   phone: string;
   event_type: string;
   event_date: string;
-  backup_date: string | null;
   guest_count: number;
   time_block: string | null;
-  wants_bartender: boolean;
-  wants_security: boolean;
-  wants_dj: boolean;
-  budget_range: string | null;
   notes: string | null;
   status: "new" | "contacted" | "booked" | "declined";
   created_at: string;
@@ -1540,11 +1535,6 @@ function BookingsTab() {
     setUpdating(null);
   }
 
-  function addOnsList(b: BookingRequest) {
-    const list = [b.wants_bartender && "Bartender", b.wants_security && "Security", b.wants_dj && "DJ"].filter(Boolean);
-    return list.length > 0 ? list.join(", ") : "—";
-  }
-
   if (loading) return <p className="font-body text-sm text-tan animate-pulse">Loading…</p>;
 
   if (bookings.length === 0) {
@@ -1556,7 +1546,7 @@ function BookingsTab() {
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-            {["Name", "Contact", "Event", "Date", "Guests", "Time", "Add-Ons", "Budget", "Notes", "Submitted", "Status"].map((h) => (
+            {["Name", "Contact", "Event", "Date", "Guests", "Time", "Notes", "Submitted", "Status"].map((h) => (
               <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
             ))}
           </tr>
@@ -1570,14 +1560,9 @@ function BookingsTab() {
                 <div>{b.phone}</div>
               </td>
               <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.event_type}</td>
-              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
-                <div>{formatDateShort(b.event_date)}</div>
-                {b.backup_date && <div className="text-tan/50">bkup {formatDateShort(b.backup_date)}</div>}
-              </td>
+              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{formatDateShort(b.event_date)}</td>
               <td className="font-body text-xs sm:text-sm text-espresso font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">{b.guest_count}</td>
               <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.time_block ?? "—"}</td>
-              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{addOnsList(b)}</td>
-              <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{b.budget_range ?? "—"}</td>
               <td className="font-body text-xs text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center max-w-[16rem]">{b.notes ?? "—"}</td>
               <td className="font-body text-xs text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">{formatDateShort(b.created_at)}</td>
               <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">

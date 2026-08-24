@@ -11,9 +11,6 @@ type FormState = {
   event_date: string;
   guest_count: string;
   time_block: string;
-  wants_bartender: boolean;
-  wants_security: boolean;
-  wants_dj: boolean;
   notes: string;
 };
 
@@ -25,9 +22,6 @@ const EMPTY_FORM: FormState = {
   event_date: "",
   guest_count: "",
   time_block: "",
-  wants_bartender: false,
-  wants_security: false,
-  wants_dj: false,
   notes: "",
 };
 
@@ -41,8 +35,7 @@ export function BookingsContent() {
   const [loading, setLoading] = useState(false);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    const { name, type } = e.target;
-    const value = type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
+    const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
@@ -80,15 +73,15 @@ export function BookingsContent() {
       />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-espresso/40 via-transparent to-espresso/60" />
 
-      <div className="relative z-10 px-6 py-16 md:py-24">
-        <div className="max-w-xl mx-auto space-y-16 md:space-y-20">
-          <div className="space-y-5">
+      <div className="relative z-10 px-6 py-8 md:py-12">
+        <div className="max-w-xl mx-auto space-y-8 md:space-y-10">
+          <div className="space-y-3">
             <a href="/" className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors">
               ← The View
             </a>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/60">Private Events</p>
-              <h1 className="font-display italic text-4xl md:text-5xl text-ivory font-light leading-[1.15]">
+              <h1 className="font-display italic text-3xl md:text-4xl text-ivory font-light leading-[1.15]">
                 Host your event at The View.
               </h1>
               <p className="font-body text-sm text-cream/50 leading-relaxed max-w-sm">
@@ -97,23 +90,23 @@ export function BookingsContent() {
             </div>
           </div>
 
-          <section ref={ref} className="pt-2 border-t border-rust/10 space-y-8">
+          <section ref={ref} className="pt-1 border-t border-rust/10 space-y-4">
             {submitted ? (
-              <div className={`reveal ${v} pt-8`}>
+              <div className={`reveal ${v} pt-4`}>
                 <p className="font-display italic text-cream/60 text-2xl">
                   Thanks — we'll be in touch.
                 </p>
               </div>
             ) : (
-              <form onSubmit={onSubmit} className={`space-y-6 pt-8 reveal ${v}`} noValidate>
-                <div className="space-y-2">
-                  <h2 className="font-display italic text-2xl text-ivory font-light">Request a Quote</h2>
+              <form onSubmit={onSubmit} className={`space-y-4 pt-4 reveal ${v}`} noValidate>
+                <div className="space-y-1.5">
+                  <h2 className="font-display italic text-xl text-ivory font-light">Request a Quote</h2>
                   <p className="font-body text-xs text-cream/40 leading-relaxed">
-                    Pricing depends on your date, guest count, and add-ons — tell us about your event and we'll follow up with a quote.
+                    Pricing depends on your date and guest count — tell us about your event and we'll follow up with a quote.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   <div className="space-y-1">
                     <label htmlFor="name" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Name</label>
                     <input className="field" id="name" name="name" type="text" required value={form.name} onChange={onChange} placeholder="Full name" />
@@ -129,7 +122,7 @@ export function BookingsContent() {
                   <input className="field" id="email" name="email" type="email" required value={form.email} onChange={onChange} placeholder="your@email.com" />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   <div className="space-y-1">
                     <label htmlFor="event_type" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Type</label>
                     <select className="field" id="event_type" name="event_type" required value={form.event_type} onChange={onChange}>
@@ -156,27 +149,9 @@ export function BookingsContent() {
                   <input className="field" id="time_block" name="time_block" type="text" required value={form.time_block} onChange={onChange} placeholder="e.g. 6pm–1am" />
                 </div>
 
-                <div className="space-y-3">
-                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Add-Ons</p>
-                  <div className="flex flex-wrap gap-x-6 gap-y-3">
-                    <label className="flex items-center gap-2 cursor-pointer font-body text-sm text-cream/60">
-                      <input type="checkbox" name="wants_bartender" checked={form.wants_bartender} onChange={onChange} className="w-4 h-4 accent-amber" />
-                      Bartender
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer font-body text-sm text-cream/60">
-                      <input type="checkbox" name="wants_security" checked={form.wants_security} onChange={onChange} className="w-4 h-4 accent-amber" />
-                      Security
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer font-body text-sm text-cream/60">
-                      <input type="checkbox" name="wants_dj" checked={form.wants_dj} onChange={onChange} className="w-4 h-4 accent-amber" />
-                      DJ
-                    </label>
-                  </div>
-                </div>
-
                 <div className="space-y-1">
                   <label htmlFor="notes" className="font-body text-[9px] tracking-[0.3em] uppercase text-cream/35">Event Details</label>
-                  <textarea className="field" id="notes" name="notes" rows={3} required value={form.notes} onChange={onChange} placeholder="Tell us more about your event" />
+                  <textarea className="field" id="notes" name="notes" rows={2} required value={form.notes} onChange={onChange} placeholder="Tell us more about your event" />
                 </div>
 
                 {error && <p className="font-body text-[9px] tracking-[0.2em] text-rust/80">{error}</p>}
