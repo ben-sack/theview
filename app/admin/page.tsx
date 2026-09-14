@@ -915,6 +915,7 @@ type AdminEvent = {
   city: string | null;
   partners: string | null;
   allow_guests: boolean;
+  announcement_blurb: string | null;
   rsvp_count: number;
   checked_in_count: number;
   waitlist_count: number;
@@ -946,10 +947,10 @@ function EventsTab() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
+  const [form, setForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false, announcement_blurb: "" });
   const [saving, setSaving] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
+  const [editForm, setEditForm] = useState({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false, announcement_blurb: "" });
   const [editSaving, setEditSaving] = useState(false);
 
   function loadEvents() {
@@ -977,7 +978,7 @@ function EventsTab() {
         capacity: parseInt(form.capacity),
       }),
     });
-    setForm({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false });
+    setForm({ title: "", date: "", end_time: "", capacity: "", location: "", city: "", partners: "", allow_guests: false, announcement_blurb: "" });
     setAdding(false);
     setSaving(false);
     loadEvents();
@@ -1006,6 +1007,7 @@ function EventsTab() {
       city: ev.city ?? "",
       partners: ev.partners ?? "",
       allow_guests: ev.allow_guests,
+      announcement_blurb: ev.announcement_blurb ?? "",
     });
     setEditingEvent(ev);
   }
@@ -1108,6 +1110,15 @@ function EventsTab() {
                     onChange={(e) => setEditForm((p) => ({ ...p, partners: e.target.value }))}
                     className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
                     placeholder="Collaborator or brand names"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="font-body text-xs tracking-widest uppercase text-tan">Announcement Blurb</label>
+                  <input
+                    value={editForm.announcement_blurb}
+                    onChange={(e) => setEditForm((p) => ({ ...p, announcement_blurb: e.target.value }))}
+                    className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                    placeholder="A short line for the announcement page (theview.la/next)"
                   />
                 </div>
               </div>
@@ -1222,6 +1233,15 @@ function EventsTab() {
                 onChange={(e) => setForm((p) => ({ ...p, partners: e.target.value }))}
                 className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
                 placeholder="Collaborator or brand names"
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="font-body text-xs tracking-widest uppercase text-tan">Announcement Blurb</label>
+              <input
+                value={form.announcement_blurb}
+                onChange={(e) => setForm((p) => ({ ...p, announcement_blurb: e.target.value }))}
+                className="w-full border border-tan/30 rounded px-3 py-2 text-sm text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                placeholder="A short line for the announcement page (theview.la/next)"
               />
             </div>
           </div>

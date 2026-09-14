@@ -108,11 +108,11 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { title, date, end_time, capacity, location, city, partners, allow_guests } = await req.json();
+  const { title, date, end_time, capacity, location, city, partners, allow_guests, announcement_blurb } = await req.json();
 
   const { error } = await supabase
     .from("events")
-    .update({ title, date, end_time: end_time || null, capacity, location, city, partners, allow_guests })
+    .update({ title, date, end_time: end_time || null, capacity, location, city, partners, allow_guests, announcement_blurb: announcement_blurb || null })
     .eq("id", id);
 
   if (error) {
