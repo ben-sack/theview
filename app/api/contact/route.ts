@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
         referred_by: referred_by || null,
         status: "pending",
         sms_opted_out: !sms_opt_in,
+        sms_opt_out_source: sms_opt_in ? null : "signup",
       },
     ])
     .select("id")

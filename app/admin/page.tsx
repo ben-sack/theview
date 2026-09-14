@@ -18,6 +18,7 @@ type Contact = {
   status: string;
   created_at: string;
   sms_opted_out: boolean;
+  sms_opt_out_source: "signup" | "stop_text" | "send_bounce" | null;
 };
 
 type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "message" | "blast" | "referrals" | "settings";
@@ -459,13 +460,14 @@ function capitalizeName(name: string) {
   return name.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-type SmsFilter = "all" | "in" | "out";
+type SmsFilter = "all" | "in" | "out" | "blocked";
 
 function SmsFilterControl({ value, onChange }: { value: SmsFilter; onChange: (v: SmsFilter) => void }) {
   const options: { key: SmsFilter; label: string }[] = [
     { key: "all", label: "Everyone" },
     { key: "in", label: "Opted In" },
     { key: "out", label: "Not Opted In" },
+    { key: "blocked", label: "Blocked by Twilio" },
   ];
   return (
     <div className="flex rounded border border-tan/30 overflow-hidden shrink-0">
@@ -487,13 +489,24 @@ function SmsFilterControl({ value, onChange }: { value: SmsFilter; onChange: (v:
 function matchesSmsFilter(c: Contact, filter: SmsFilter) {
   if (filter === "in") return !c.sms_opted_out;
   if (filter === "out") return c.sms_opted_out;
+  if (filter === "blocked") return c.sms_opt_out_source === "send_bounce";
   return true;
 }
 
-function OptInCell({ optedOut }: { optedOut: boolean }) {
+function OptInCell({ optedOut, source }: { optedOut: boolean; source?: Contact["sms_opt_out_source"] }) {
+  const sourceLabel =
+    source === "stop_text" ? "replied STOP" :
+    source === "send_bounce" ? "blocked by Twilio" :
+    source === "signup" ? "declined at signup" :
+    null;
   return (
     <span className={`font-body text-xs sm:text-sm font-medium ${optedOut ? "text-rust" : "text-espresso"}`}>
       {optedOut ? "No" : "Yes"}
+      {optedOut && sourceLabel && (
+        <span className={`block font-normal normal-case tracking-normal ${source === "send_bounce" ? "text-amber" : "text-tan/50"} text-[10px]`}>
+          {sourceLabel}
+        </span>
+      )}
     </span>
   );
 }
@@ -715,7 +728,7 @@ function MembersTab({
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
                   <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
-                    <OptInCell optedOut={c.sms_opted_out} />
+                    <OptInCell optedOut={c.sms_opted_out} source={c.sms_opt_out_source} />
                   </td>
                   <td className="py-3 px-3 sm:py-3.5 sm:px-4 min-w-[180px]">
                     <input
@@ -856,7 +869,7 @@ function RejectedTab() {
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.phone ?? "—"}</td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center">{c.email}</td>
                   <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
-                    <OptInCell optedOut={c.sms_opted_out} />
+                    <OptInCell optedOut={c.sms_opted_out} source={c.sms_opt_out_source} />
                   </td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center italic">
                     {c.rejection_reason ?? <span className="not-italic text-tan/40">—</span>}

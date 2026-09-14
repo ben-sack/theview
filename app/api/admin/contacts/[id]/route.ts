@@ -33,7 +33,7 @@ async function sendApprovalSms(contactId: string, phone: string, name: string) {
   } catch (err: unknown) {
     const twilioErr = err as { code?: number };
     if (twilioErr.code === 21610) {
-      await supabase.from("contacts").update({ sms_opted_out: true }).eq("id", contactId);
+      await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contactId);
     }
     throw err;
   }

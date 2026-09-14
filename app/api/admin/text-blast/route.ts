@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       if (twilioErr.code === 21610) {
         await supabase
           .from("contacts")
-          .update({ sms_opted_out: true })
+          .update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" })
           .eq("id", contact.id);
       }
       failures.push(contact.name);

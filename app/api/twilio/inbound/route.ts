@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (keywordType === "stop" && contact) {
-    await supabase.from("contacts").update({ sms_opted_out: true }).eq("id", contact.id);
+    await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "stop_text" }).eq("id", contact.id);
   } else if (keywordType === "start" && contact) {
-    await supabase.from("contacts").update({ sms_opted_out: false }).eq("id", contact.id);
+    await supabase.from("contacts").update({ sms_opted_out: false, sms_opt_out_source: null }).eq("id", contact.id);
   }
 
   await supabase.from("inbound_messages").insert([

@@ -71,7 +71,11 @@ export async function POST(
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone,
       });
-    } catch (err) {
+    } catch (err: unknown) {
+      const twilioErr = err as { code?: number };
+      if (twilioErr.code === 21610) {
+        await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contact.id);
+      }
       console.error("SMS failed:", err);
     }
   }
