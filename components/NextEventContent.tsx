@@ -6,15 +6,28 @@ import Image from "next/image";
 type NextEvent = {
   title: string;
   date: string;
+  end_time: string | null;
   city: string | null;
   partners: string | null;
   announcement_blurb: string | null;
 };
 
+function formatTimeCompact(date: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "America/Los_Angeles",
+  }).formatToParts(new Date(date));
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "";
+  const dayPeriod = (parts.find((p) => p.type === "dayPeriod")?.value ?? "").toUpperCase();
+  return minute === "00" ? `${hour}${dayPeriod}` : `${hour}:${minute}${dayPeriod}`;
+}
+
 export function NextEventContent() {
   const [event, setEvent] = useState<NextEvent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [shareLabel, setShareLabel] = useState("Share");
 
   useEffect(() => {
     fetch("/api/next-event")
@@ -29,20 +42,11 @@ export function NextEventContent() {
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
     : "";
 
-  async function handleShare() {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: event?.title ?? "The View", url });
-      } catch {
-        // user cancelled the native share sheet — no action needed
-      }
-      return;
-    }
-    await navigator.clipboard.writeText(url);
-    setShareLabel("Copied!");
-    setTimeout(() => setShareLabel("Share"), 2000);
-  }
+  const eventTime = event
+    ? event.end_time
+      ? `${formatTimeCompact(event.date)} – ${formatTimeCompact(event.end_time)}`
+      : formatTimeCompact(event.date)
+    : "";
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-svh bg-oxblood overflow-hidden px-6">
@@ -62,37 +66,21 @@ export function NextEventContent() {
         {loading && <div className="w-2 h-2 rounded-full bg-rust/40 animate-pulse" />}
 
         {!loading && event && (
-          <>
-            <div className="space-y-3">
-              <h1 className="font-display text-3xl md:text-4xl text-ivory font-light">
-                {event.title}
-              </h1>
-              <p className="font-body text-sm text-cream/50">{eventDate}</p>
-              {event.city && (
-                <p className="font-body text-sm text-cream/40">{event.city}</p>
-              )}
-              {event.announcement_blurb && (
-                <p className="font-display italic text-cream/60 text-lg font-light pt-2">
-                  {event.announcement_blurb}
-                </p>
-              )}
-            </div>
-
-            <div className="w-full space-y-3">
-              <a
-                href="/?apply=1"
-                className="block w-full bg-ivory text-espresso font-body text-sm font-medium tracking-widest uppercase py-4 rounded hover:bg-cream transition-colors duration-200 text-center"
-              >
-                Request Access
-              </a>
-              <button
-                onClick={handleShare}
-                className="w-full border border-tan/30 text-tan/70 hover:text-cream hover:border-tan/50 font-body text-sm font-medium tracking-widest uppercase py-4 rounded transition-colors duration-200"
-              >
-                {shareLabel}
-              </button>
-            </div>
-          </>
+          <div className="space-y-3">
+            <h1 className="font-display text-3xl md:text-4xl text-ivory font-light">
+              {event.title}
+            </h1>
+            <p className="font-body text-sm text-cream/50">{eventDate}</p>
+            <p className="font-body text-sm text-cream/50">{eventTime}</p>
+            {event.city && (
+              <p className="font-body text-sm text-cream/40">{event.city}</p>
+            )}
+            {event.announcement_blurb && (
+              <p className="font-display italic text-cream/60 text-lg font-light pt-2">
+                {event.announcement_blurb}
+              </p>
+            )}
+          </div>
         )}
 
         {!loading && !event && (

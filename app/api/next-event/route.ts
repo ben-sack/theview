@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export async function GET() {
   const { data: event, error } = await supabase
     .from("events")
-    .select("title, date, city, partners, announcement_blurb")
+    .select("title, date, end_time, city, partners, announcement_blurb")
     .gte("date", new Date().toISOString())
     .order("date", { ascending: true })
     .limit(1)
