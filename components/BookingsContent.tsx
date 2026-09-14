@@ -102,7 +102,7 @@ export function BookingsContent() {
                 <div className="space-y-1">
                   <h2 className="font-display italic text-xl text-ivory font-light">Request a Quote</h2>
                   <p className="font-body text-xs text-cream/40 leading-snug">
-                    Pricing depends on your date and guest count — tell us about your event and we'll follow up with a quote.
+                    Pricing depends on your event date, guest count and details — tell us about your event and we'll follow up with a quote.
                   </p>
                 </div>
 
