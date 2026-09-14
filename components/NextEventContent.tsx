@@ -26,7 +26,7 @@ export function NextEventContent() {
   }, []);
 
   const eventDate = event
-    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" })
+    ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
     : "";
 
   async function handleShare() {
@@ -64,10 +64,7 @@ export function NextEventContent() {
         {!loading && event && (
           <>
             <div className="space-y-3">
-              <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">
-                The View
-              </p>
-              <h1 className="font-display italic text-3xl md:text-4xl text-ivory font-light">
+              <h1 className="font-display text-3xl md:text-4xl text-ivory font-light">
                 {event.title}
               </h1>
               <p className="font-body text-sm text-cream/50">{eventDate}</p>
@@ -100,9 +97,6 @@ export function NextEventContent() {
 
         {!loading && !event && (
           <div className="space-y-3">
-            <p className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50">
-              The View
-            </p>
             <p className="font-display italic text-cream/50 text-2xl font-light">
               Nothing announced yet.
             </p>
