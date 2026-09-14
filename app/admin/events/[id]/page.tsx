@@ -10,6 +10,7 @@ type Event = {
   location: string | null;
   partners: string | null;
   allow_guests: boolean;
+  event_number: number;
 };
 
 type Rsvp = {
@@ -543,6 +544,7 @@ export default function EventDetailPage() {
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
+                  <p className="font-body text-[10px] tracking-widest uppercase text-tan/50">Event {event.event_number}</p>
                   <h1 className="font-display text-2xl sm:text-3xl text-espresso font-bold">{event.title}</h1>
                   <p className="font-body text-sm text-tan">{eventDate}</p>
                 </div>

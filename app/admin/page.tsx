@@ -907,6 +907,7 @@ function RejectedTab() {
 
 type AdminEvent = {
   id: string;
+  event_number: number;
   title: string;
   date: string;
   end_time: string | null;
@@ -1279,7 +1280,7 @@ function EventsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                  {["Event", "Date", "Time", "Location", "Partner(s)", "RSVPs", "Attendees", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
+                  {["#", "Event", "Date", "Time", "Location", "Partner(s)", "RSVPs", "Attendees", "Capacity", "Waitlist", isPast ? "Checked In" : "Guests", "", ""].map((h) => (
                     <th key={h} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium whitespace-nowrap text-center">{h}</th>
                   ))}
                 </tr>
@@ -1287,6 +1288,7 @@ function EventsTab() {
               <tbody>
                 {rows.map((ev) => (
                   <tr key={ev.id} className="border-b border-tan/10 divide-x divide-tan/10 hover:bg-ivory/60 transition-colors">
+                    <td className="font-body text-xs sm:text-sm text-tan/60 py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">Event {ev.event_number}</td>
                     <td className="font-body text-xs sm:text-sm font-medium py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                       <a href={`/admin/events/${ev.id}`} className="text-rust hover:text-ember transition-colors">{ev.title}</a>
                     </td>
