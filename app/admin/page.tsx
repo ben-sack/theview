@@ -1844,7 +1844,7 @@ function getSegmentCount(text: string) {
 function TextBlastTab() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [result, setResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [optedOutCount, setOptedOutCount] = useState<number>(0);
 
@@ -1866,15 +1866,20 @@ function TextBlastTab() {
     if (!message.trim()) return;
     setSending(true);
     setResult(null);
-    const res = await fetch("/api/admin/text-blast", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
-    });
-    const data = await res.json();
-    setResult(data);
-    setSending(false);
-    if (data.sent > 0) setMessage("");
+    try {
+      const res = await fetch("/api/admin/text-blast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (data.sent > 0) setMessage("");
+    } catch {
+      setResult({ sent: 0, failures: [], connectionLost: true });
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -1920,9 +1925,18 @@ function TextBlastTab() {
       </div>
 
       {result && (
-        <div className={`rounded-lg px-4 py-3 font-body text-sm ${result.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-          <p>Sent to {result.sent} {result.sent === 1 ? "member" : "members"}.</p>
-          {result.failures.length > 0 && <p className="mt-1">Failed: {result.failures.join(", ")}</p>}
+        <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+          result.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
+          result.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
+        }`}>
+          {result.connectionLost ? (
+            <p>Lost connection while waiting on a response — the send itself likely finished on the server. Check the Members tab's opt-in status if you're unsure, before resending.</p>
+          ) : (
+            <>
+              <p>Sent to {result.sent} {result.sent === 1 ? "member" : "members"}.</p>
+              {result.failures.length > 0 && <p className="mt-1">Failed: {result.failures.join(", ")}</p>}
+            </>
+          )}
         </div>
       )}
 

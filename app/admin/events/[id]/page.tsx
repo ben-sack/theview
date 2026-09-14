@@ -65,11 +65,11 @@ export default function EventDetailPage() {
   const [removingRsvpId, setRemovingRsvpId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
-  const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
   const [blastTemplate, setBlastTemplate] = useState("");
   const [eventMessage, setEventMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[] } | null>(null);
+  const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
   const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
   const [textBlastOpen, setTextBlastOpen] = useState(false);
   const [guestListOpen, setGuestListOpen] = useState(false);
@@ -161,21 +161,27 @@ export default function EventDetailPage() {
     if (!eventMessage.trim()) return;
     setSendingMessage(true);
     setMessageResult(null);
-    const res = await fetch(`/api/admin/events/${id}/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: eventMessage,
-        contact_ids: textSelectedIds.size > 0 ? Array.from(textSelectedIds) : undefined,
-      }),
-    });
-    const data = await res.json();
-    setMessageResult(data);
-    setSendingMessage(false);
-    if (data.sent > 0) {
-      setEventMessage("");
-      setTextSelectedIds(new Set());
+    try {
+      const res = await fetch(`/api/admin/events/${id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: eventMessage,
+          contact_ids: textSelectedIds.size > 0 ? Array.from(textSelectedIds) : undefined,
+        }),
+      });
+      const data = await res.json();
+      setMessageResult(data);
+      if (data.sent > 0) {
+        setEventMessage("");
+        setTextSelectedIds(new Set());
+        loadEvent(false);
+      }
+    } catch {
+      setMessageResult({ sent: 0, failures: [], connectionLost: true });
       loadEvent(false);
+    } finally {
+      setSendingMessage(false);
     }
   }
 
@@ -206,20 +212,29 @@ export default function EventDetailPage() {
   async function sendBlast() {
     setBlasting(true);
     setBlastResult(null);
-    const res = await fetch(`/api/admin/events/${id}/blast`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message_template: blastTemplate,
-        contact_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
-      }),
-    });
-    const data = await res.json();
-    setBlastResult(data);
-    setBlasting(false);
-    if (data.sent > 0) {
-      setSelectedIds(new Set());
+    try {
+      const res = await fetch(`/api/admin/events/${id}/blast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_template: blastTemplate,
+          contact_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+        }),
+      });
+      const data = await res.json();
+      setBlastResult(data);
+      if (data.sent > 0) {
+        setSelectedIds(new Set());
+        loadEvent(false);
+      }
+    } catch {
+      // The connection can drop before the response arrives on a large send,
+      // even though the send itself keeps running server-side and finishes
+      // correctly — reload real state instead of leaving stale/crashed UI.
+      setBlastResult({ sent: 0, failures: [], connectionLost: true });
       loadEvent(false);
+    } finally {
+      setBlasting(false);
     }
   }
 
@@ -712,9 +727,18 @@ export default function EventDetailPage() {
                   </div>
 
                   {blastResult && (
-                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-                      <p>Sent to {blastResult.sent} members.</p>
-                      {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
+                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+                      blastResult.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
+                      blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
+                    }`}>
+                      {blastResult.connectionLost ? (
+                        <p>Lost connection while waiting on a response — the send itself likely finished on the server. The Invited/Not Invited counts above have been refreshed to reflect real status; check them before resending.</p>
+                      ) : (
+                        <>
+                          <p>Sent to {blastResult.sent} members.</p>
+                          {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
+                        </>
+                      )}
                     </div>
                   )}
                   <button
@@ -846,9 +870,18 @@ export default function EventDetailPage() {
                   </div>
 
                   {messageResult && (
-                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
-                      <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
-                      {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
+                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+                      messageResult.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
+                      messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
+                    }`}>
+                      {messageResult.connectionLost ? (
+                        <p>Lost connection while waiting on a response — the send itself likely finished on the server. Status above has been refreshed; check it before resending.</p>
+                      ) : (
+                        <>
+                          <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
+                          {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
+                        </>
+                      )}
                     </div>
                   )}
                   <button
