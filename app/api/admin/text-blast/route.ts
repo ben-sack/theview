@@ -64,24 +64,35 @@ export async function POST(req: NextRequest) {
   let sent = 0;
   const failures: string[] = [];
 
-  for (const contact of contacts ?? []) {
-    try {
-      await client.messages.create({
-        body: `${message}\n\nReply STOP to opt out`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: contact.phone!,
-      });
-      sent++;
-    } catch (err: unknown) {
-      const twilioErr = err as { code?: number };
-      if (twilioErr.code === 21610) {
-        await supabase
-          .from("contacts")
-          .update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" })
-          .eq("id", contact.id);
-      }
-      failures.push(contact.name);
-    }
+  // Sent concurrently in bounded batches, not fully sequential — a large
+  // membership list sent one-at-a-time risks the host platform's function
+  // execution time limit killing the request before everyone is reached.
+  const BATCH_SIZE = 10;
+  const allContacts = contacts ?? [];
+
+  for (let i = 0; i < allContacts.length; i += BATCH_SIZE) {
+    const batch = allContacts.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (contact) => {
+        try {
+          await client.messages.create({
+            body: `${message}\n\nReply STOP to opt out`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: contact.phone!,
+          });
+          sent++;
+        } catch (err: unknown) {
+          const twilioErr = err as { code?: number };
+          if (twilioErr.code === 21610) {
+            await supabase
+              .from("contacts")
+              .update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" })
+              .eq("id", contact.id);
+          }
+          failures.push(contact.name);
+        }
+      })
+    );
   }
 
   return NextResponse.json({ sent, failures });

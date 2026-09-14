@@ -60,30 +60,40 @@ export async function POST(
   let sent = 0;
   const failures: string[] = [];
 
-  for (const rsvp of rsvps ?? []) {
-    const contact = (Array.isArray(rsvp.contacts) ? rsvp.contacts[0] : rsvp.contacts) as { id: string; name: string; phone: string | null; sms_opted_out: boolean } | null;
-    if (!contact?.phone || contact.sms_opted_out) continue;
-    if (recipientIds && !recipientIds.has(contact.id)) continue;
+  const eligible = (rsvps ?? [])
+    .map((rsvp) => (Array.isArray(rsvp.contacts) ? rsvp.contacts[0] : rsvp.contacts) as { id: string; name: string; phone: string | null; sms_opted_out: boolean } | null)
+    .filter((contact): contact is { id: string; name: string; phone: string; sms_opted_out: boolean } =>
+      !!contact?.phone && !contact.sms_opted_out && (!recipientIds || recipientIds.has(contact.id))
+    );
 
-    try {
-      const firstName = contact.name.split(" ")[0];
-      const personalized = messageWithEventInfo.replace(/\{name\}/gi, firstName);
-      await client.messages.create({
-        body: `${personalized}\n\nReply STOP to opt out`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: contact.phone,
-      });
-      sent++;
-      await supabase
-        .from("event_text_blasts")
-        .upsert({ event_id: id, contact_id: contact.id, sent_at: new Date().toISOString() }, { onConflict: "event_id,contact_id" });
-    } catch (err: unknown) {
-      const twilioErr = err as { code?: number };
-      if (twilioErr.code === 21610) {
-        await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contact.id);
-      }
-      failures.push(contact.name);
-    }
+  // Sent concurrently in bounded batches, not fully sequential — see the
+  // RSVP Invite Blast route for the incident this pattern is fixing.
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < eligible.length; i += BATCH_SIZE) {
+    const batch = eligible.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (contact) => {
+        try {
+          const firstName = contact.name.split(" ")[0];
+          const personalized = messageWithEventInfo.replace(/\{name\}/gi, firstName);
+          await client.messages.create({
+            body: `${personalized}\n\nReply STOP to opt out`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: contact.phone,
+          });
+          sent++;
+          await supabase
+            .from("event_text_blasts")
+            .upsert({ event_id: id, contact_id: contact.id, sent_at: new Date().toISOString() }, { onConflict: "event_id,contact_id" });
+        } catch (err: unknown) {
+          const twilioErr = err as { code?: number };
+          if (twilioErr.code === 21610) {
+            await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contact.id);
+          }
+          failures.push(contact.name);
+        }
+      })
+    );
   }
 
   return NextResponse.json({ sent, failures });

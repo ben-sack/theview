@@ -60,42 +60,48 @@ export async function POST(
 
   let sent = 0;
   const failures: string[] = [];
-  const sentContactIds: string[] = [];
 
-  for (const contact of contacts ?? []) {
-    const firstName = contact.name.split(" ")[0];
-    const rsvpLink = await getRsvpShortLink(id, contact.id);
-    const message = `${template
-      .replace(/\{name\}/gi, firstName)
-      .replace(/\{rsvp_link\}/gi, rsvpLink)}\n\nReply STOP to opt out`;
+  // Sent concurrently in bounded batches (not fully sequential) so large
+  // recipient lists have a real chance of finishing before the host
+  // platform's function-execution time limit kills the request. Each
+  // successful send records its own event_invites row immediately —
+  // NOT batched until the end — so a mid-run timeout can never again
+  // silently lose invite-tracking for people who were actually texted.
+  const BATCH_SIZE = 10;
+  const allContacts = contacts ?? [];
 
-    try {
-      await client.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: contact.phone!,
-      });
-      sent++;
-      sentContactIds.push(contact.id);
-    } catch (err: unknown) {
-      const twilioErr = err as { code?: number };
-      if (twilioErr.code === 21610) {
-        await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contact.id);
-      }
-      failures.push(contact.name);
-    }
-  }
+  for (let i = 0; i < allContacts.length; i += BATCH_SIZE) {
+    const batch = allContacts.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (contact) => {
+        const firstName = contact.name.split(" ")[0];
+        const rsvpLink = await getRsvpShortLink(id, contact.id);
+        const message = `${template
+          .replace(/\{name\}/gi, firstName)
+          .replace(/\{rsvp_link\}/gi, rsvpLink)}\n\nReply STOP to opt out`;
 
-  if (sentContactIds.length > 0) {
-    const { error: inviteTrackingError } = await supabase
-      .from("event_invites")
-      .upsert(
-        sentContactIds.map((contact_id) => ({ event_id: id, contact_id })),
-        { onConflict: "event_id,contact_id" }
-      );
-    if (inviteTrackingError) {
-      console.error("Failed to record event_invites (texts still sent successfully):", inviteTrackingError.message);
-    }
+        try {
+          await client.messages.create({
+            body: message,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: contact.phone!,
+          });
+          sent++;
+          const { error: inviteTrackingError } = await supabase
+            .from("event_invites")
+            .upsert({ event_id: id, contact_id: contact.id }, { onConflict: "event_id,contact_id" });
+          if (inviteTrackingError) {
+            console.error("Failed to record event_invites (text still sent successfully):", inviteTrackingError.message);
+          }
+        } catch (err: unknown) {
+          const twilioErr = err as { code?: number };
+          if (twilioErr.code === 21610) {
+            await supabase.from("contacts").update({ sms_opted_out: true, sms_opt_out_source: "send_bounce" }).eq("id", contact.id);
+          }
+          failures.push(contact.name);
+        }
+      })
+    );
   }
 
   return NextResponse.json({ sent, failures });
