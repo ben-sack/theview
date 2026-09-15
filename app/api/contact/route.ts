@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-
-function normalizePhone(raw: string): string {
-  const hasPlus = raw.trim().startsWith("+");
-  const digits = raw.replace(/\D/g, "");
-
-  if (hasPlus) return `+${digits}`;
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return `+${digits}`;
-}
+import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -26,6 +17,10 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedPhone = normalizePhone(phone);
+
+  if (!isUSPhoneNumber(normalizedPhone)) {
+    return NextResponse.json({ error: "Sorry, we only accept US phone numbers at the moment." }, { status: 400 });
+  }
 
   const { data: existing } = await supabase
     .from("contacts")

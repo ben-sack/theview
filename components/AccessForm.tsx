@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInView } from "@/hooks/useInView";
+import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 
 type FormState = {
   first_name: string;
@@ -83,6 +84,11 @@ export function AccessForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!isUSPhoneNumber(normalizePhone(form.phone))) {
+      setError("Sorry, we only accept US phone numbers at the moment.");
+      return;
+    }
 
     if (smsChoice === null) {
       setError("Please let us know if we can text you before submitting.");
