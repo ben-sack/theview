@@ -12,6 +12,8 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  await supabase.from("gallery_views").insert([{}]);
+
   const event = photos && photos.length > 0 ? (photos[0].events as unknown as { title: string; date: string }) : null;
 
   return NextResponse.json({

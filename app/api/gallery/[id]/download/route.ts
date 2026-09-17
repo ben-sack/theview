@@ -30,6 +30,8 @@ export async function GET(
   const buffer = Buffer.from(await file.arrayBuffer());
   const watermarked = await watermarkPhoto(buffer);
 
+  await supabase.from("gallery_downloads").insert([{ photo_id: id }]);
+
   return new NextResponse(new Uint8Array(watermarked), {
     headers: {
       "Content-Type": "image/jpeg",

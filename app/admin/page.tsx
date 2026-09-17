@@ -1385,11 +1385,16 @@ function GalleryTab() {
   const [uploadError, setUploadError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [stats, setStats] = useState<{ views: number; downloads: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/gallery")
       .then((r) => r.json())
       .then((d) => { setPhotos(d.photos ?? []); setLoading(false); });
+
+    fetch("/api/admin/gallery/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d));
 
     fetch("/api/admin/events")
       .then((r) => r.json())
@@ -1458,6 +1463,19 @@ function GalleryTab() {
 
   return (
     <div className="space-y-6">
+      {stats && (
+        <div className="flex items-center gap-6 bg-white border border-tan/20 rounded-lg px-5 py-3">
+          <div>
+            <p className="font-display text-xl text-espresso font-light">{stats.views}</p>
+            <p className="font-body text-[10px] tracking-widest uppercase text-tan">Link Opens</p>
+          </div>
+          <div className="w-px h-8 bg-tan/20" />
+          <div>
+            <p className="font-display text-xl text-espresso font-light">{stats.downloads}</p>
+            <p className="font-body text-[10px] tracking-widest uppercase text-tan">Photos Downloaded</p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
           <label className="font-body text-xs tracking-widest uppercase text-tan">Event</label>
