@@ -262,7 +262,7 @@ function AdminPageInner() {
         ) : tab === "pending" ? (
           <PendingTab contacts={contacts} onUpdate={updateStatus} onApproveAll={approveAll} />
         ) : tab === "approved" ? (
-          <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} />
+          <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} onUpdate={updateStatus} />
         ) : tab === "message" ? (
           <MessageTab />
         ) : tab === "rejected" ? (
@@ -515,14 +515,18 @@ function MembersTab({
   contacts,
   onExport,
   onDelete,
+  onUpdate,
 }: {
   contacts: Contact[];
   onExport: () => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, status: "approved" | "rejected", reason?: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [smsFilter, setSmsFilter] = useState<SmsFilter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
   type GenderGroup = "male" | "female" | "unsure";
@@ -592,6 +596,17 @@ function MembersTab({
       alert("Failed to delete. Please try again.");
     }
     setDeleting(null);
+  }
+
+  function startReject(id: string) {
+    setRejectingId(id);
+    setRejectReason("");
+  }
+
+  function confirmReject(id: string) {
+    onUpdate(id, "rejected", rejectReason);
+    setRejectingId(null);
+    setRejectReason("");
   }
 
   const filtered = contacts
@@ -701,7 +716,7 @@ function MembersTab({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-tan/20 bg-ivory divide-x divide-tan/10">
-                {["Name", "Instagram", "Referred By", "Phone", "Email", "Opted In", "Notes", "Joined", ""].map((h, i) => (
+                {["Name", "Instagram", "Referred By", "Phone", "Email", "Opted In", "Notes", "Joined", "", ""].map((h, i) => (
                   <th key={i} className="font-body text-[10px] sm:text-xs tracking-widest uppercase text-tan pb-2 pt-2 px-3 sm:pb-3 sm:pt-3 sm:px-4 font-medium text-center">
                     {h}
                   </th>
@@ -742,6 +757,41 @@ function MembersTab({
                   </td>
                   <td className="font-body text-xs sm:text-sm text-tan py-3 px-3 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
                     {formatDateShort(c.created_at)}
+                  </td>
+                  <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    {rejectingId === c.id ? (
+                      <div className="flex flex-col gap-1.5 items-center min-w-[140px]">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="Reason (optional)"
+                          className="w-full border border-tan/30 rounded px-2 py-1 text-xs text-espresso placeholder-tan/40 focus:outline-none focus:border-rust"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => confirmReject(c.id)}
+                            className="font-body text-xs font-medium text-rust hover:text-rust/70 transition-colors"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(null)}
+                            className="font-body text-xs text-tan/50 hover:text-espresso transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startReject(c.id)}
+                        className="font-body text-xs text-tan/50 hover:text-rust transition-colors whitespace-nowrap"
+                      >
+                        Move to Rejected
+                      </button>
+                    )}
                   </td>
                   <td className="py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     <button
