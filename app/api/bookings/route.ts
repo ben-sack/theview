@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({
-        body: `New booking request: ${name} — ${event_type}, ${event_date}, ${guest_count} guests. Check the admin Bookings tab.`,
+        body: `New booking request: ${name} - ${event_type}, ${event_date}, ${guest_count} guests. Check the admin Bookings tab.`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: notifyPhone,
       });

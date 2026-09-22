@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GALLERY_MAX_PHOTOS } from "@/lib/gallery";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
+import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 
 type Contact = {
   id: string;
@@ -1847,9 +1848,14 @@ function MessageTab() {
           <div className="flex items-center justify-between font-body text-xs text-tan">
             <span>{template.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
             {costPerSend !== null && (
-              <span>Cost per approval: <strong className="text-espresso">${costPerSend}</strong></span>
+              <span>Cost per approval: <strong className="text-espresso">${costPerSend}</strong> + carrier fees</span>
             )}
           </div>
+          {!isGsm7Compatible(template) && (
+            <p className="font-body text-[11px] text-amber leading-relaxed">
+              Contains an emoji or special character (e.g. — “ ”) — this forces shorter 70-character segments instead of 160, increasing cost per send.
+            </p>
+          )}
         </div>
 
         <button
@@ -1885,9 +1891,14 @@ function MessageTab() {
           <div className="flex items-center justify-between font-body text-xs text-tan">
             <span>{waitlistTemplate.length} characters · {waitlistSegments} {waitlistSegments === 1 ? "segment" : "segments"}</span>
             {waitlistCostPerSend !== null && (
-              <span>Cost per promotion: <strong className="text-espresso">${waitlistCostPerSend}</strong></span>
+              <span>Cost per promotion: <strong className="text-espresso">${waitlistCostPerSend}</strong> + carrier fees</span>
             )}
           </div>
+          {!isGsm7Compatible(waitlistTemplate) && (
+            <p className="font-body text-[11px] text-amber leading-relaxed">
+              Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+            </p>
+          )}
         </div>
 
         <button
@@ -1902,12 +1913,11 @@ function MessageTab() {
   );
 }
 
-const TWILIO_PRICE_PER_SEGMENT = 0.0079;
-
-function getSegmentCount(text: string) {
-  if (text.length === 0) return 0;
-  return text.length <= 160 ? 1 : Math.ceil(text.length / 153);
-}
+// Twilio's published US toll-free base rate. Real bills also include a
+// separate per-message carrier surcharge (varies by recipient's carrier,
+// typically ~$0.003–0.007) that isn't reflected in this estimate — see the
+// note shown next to every cost estimate in the UI.
+const TWILIO_PRICE_PER_SEGMENT = 0.0083;
 
 function TextBlastTab() {
   const [message, setMessage] = useState("");
@@ -1987,9 +1997,14 @@ function TextBlastTab() {
         <div className="flex items-center justify-between font-body text-xs text-tan">
           <span>{message.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
           {estimatedCost !== null && (
-            <span>Est. cost: <strong className="text-espresso">${estimatedCost}</strong></span>
+            <span>Est. cost: <strong className="text-espresso">${estimatedCost}</strong> + carrier fees</span>
           )}
         </div>
+        {!isGsm7Compatible(message) && (
+          <p className="font-body text-[11px] text-amber leading-relaxed">
+            Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+          </p>
+        )}
       </div>
 
       {result && (

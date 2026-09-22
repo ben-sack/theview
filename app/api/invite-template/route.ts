@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 const DEFAULT_TEMPLATE =
-  "You should apply for The View — a members-only night out. {link}";
+  "You should apply for The View, a members-only night out. {link}";
 
 export async function GET() {
   const { data } = await supabase

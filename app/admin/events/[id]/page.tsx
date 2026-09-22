@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 
 type Event = {
   id: string;
@@ -106,11 +107,11 @@ export default function EventDetailPage() {
       if (isInitial) {
         setBlastTemplate(
           settings?.rsvp_blast_default_template ||
-          `Hey {name}, you're invited to {event} on {date}. Spots are limited — RSVP here to claim yours: {rsvp_link}`
+          `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`
         );
         setEventMessage(
           settings?.event_text_blast_default_template ||
-          `Hey, just a reminder that doors open at {door_time} this Saturday. Here is the address: {address}. Entry is first come first serve based on capacity — make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`
+          `Hey, just a reminder that doors open at {door_time} this Saturday. Here is the address: {address}. Entry is first come first serve based on capacity. Make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`
         );
         setLoading(false);
       }
@@ -653,9 +654,14 @@ export default function EventDetailPage() {
                     <div className="flex items-center justify-between font-body text-xs text-tan">
                       <span>{blastTemplate.length} characters · {blastSegments} {blastSegments === 1 ? "segment" : "segments"}</span>
                       {blastCost !== null && (
-                        <span>Est. cost: <strong className="text-espresso">${blastCost}</strong></span>
+                        <span>Est. cost: <strong className="text-espresso">${blastCost}</strong> + carrier fees</span>
                       )}
                     </div>
+                    {!isGsm7Compatible(blastTemplate) && (
+                      <p className="font-body text-[11px] text-amber leading-relaxed">
+                        Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={saveBlastDefault}
@@ -793,9 +799,14 @@ export default function EventDetailPage() {
                     <div className="flex items-center justify-between font-body text-xs text-tan">
                       <span>{eventMessage.length} characters · {eventMessageSegments} {eventMessageSegments === 1 ? "segment" : "segments"}</span>
                       {eventMessageCost !== null && (
-                        <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong></span>
+                        <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong> + carrier fees</span>
                       )}
                     </div>
+                    {!isGsm7Compatible(eventMessage) && (
+                      <p className="font-body text-[11px] text-amber leading-relaxed">
+                        Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={saveEventMessageDefault}
@@ -910,9 +921,8 @@ export default function EventDetailPage() {
   );
 }
 
-const TWILIO_PRICE_PER_SEGMENT = 0.0079;
-
-function getSegmentCount(text: string) {
-  if (text.length === 0) return 0;
-  return text.length <= 160 ? 1 : Math.ceil(text.length / 153);
-}
+// Twilio's published US toll-free base rate. Real bills also include a
+// separate per-message carrier surcharge (varies by recipient's carrier,
+// typically ~$0.003–0.007) that isn't reflected in this estimate — see the
+// note shown next to every cost estimate in the UI.
+const TWILIO_PRICE_PER_SEGMENT = 0.0083;

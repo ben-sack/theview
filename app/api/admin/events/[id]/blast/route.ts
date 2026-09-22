@@ -48,7 +48,7 @@ export async function POST(
 
   const eventDate = formatEventDateShort(new Date(event.date));
 
-  const defaultTemplate = `Hey {name}, you're invited to {event} on {date}. Spots are limited — RSVP here to claim yours: {rsvp_link}`;
+  const defaultTemplate = `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`;
   const template = (message_template?.trim() || defaultTemplate)
     .replace(/\{event\}/gi, event.title)
     .replace(/\{date\}/gi, eventDate);
