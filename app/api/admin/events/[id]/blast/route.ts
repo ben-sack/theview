@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getRsvpShortLink } from "@/lib/shortLink";
 import { formatEventDateShort } from "@/lib/messageFormat";
+import { isValidMediaUrl, mediaParams, resolveTestRecipient } from "@/lib/blastMedia";
 import twilio from "twilio";
+
+const DEFAULT_TEMPLATE = `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`;
 
 function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
@@ -17,7 +20,11 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { message_template, contact_ids } = await req.json().catch(() => ({}));
+  const { message_template, contact_ids, mediaUrl, testPhone } = await req.json().catch(() => ({}));
+
+  if (!isValidMediaUrl(mediaUrl)) {
+    return NextResponse.json({ error: "Invalid photo." }, { status: 400 });
+  }
 
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -27,6 +34,36 @@ export async function POST(
 
   if (eventError || !event) {
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  if (testPhone) {
+    const recipient = await resolveTestRecipient(testPhone);
+    if (!recipient) {
+      return NextResponse.json({ error: "Enter a valid US phone number for the test." }, { status: 400 });
+    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://theview.la";
+    const rsvpLink = recipient.contactId
+      ? await getRsvpShortLink(id, recipient.contactId)
+      : `${siteUrl}/rsvp/${id}`;
+    const body = `${(message_template?.trim() || DEFAULT_TEMPLATE)
+      .replace(/\{event\}/gi, event.title)
+      .replace(/\{date\}/gi, formatEventDateShort(new Date(event.date)))
+      .replace(/\{name\}/gi, recipient.name.split(" ")[0])
+      .replace(/\{rsvp_link\}/gi, rsvpLink)}\n\nReply STOP to opt out`;
+
+    // Test sends are not recorded in event_invites — the Invited counts
+    // should only ever reflect real invite blasts.
+    try {
+      await twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN).messages.create({
+        body,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: recipient.phone,
+        ...mediaParams(mediaUrl),
+      });
+      return NextResponse.json({ sent: 1, failures: [] });
+    } catch {
+      return NextResponse.json({ sent: 0, failures: [recipient.phone] });
+    }
   }
 
   let contactsQuery = supabase
@@ -48,8 +85,7 @@ export async function POST(
 
   const eventDate = formatEventDateShort(new Date(event.date));
 
-  const defaultTemplate = `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`;
-  const template = (message_template?.trim() || defaultTemplate)
+  const template = (message_template?.trim() || DEFAULT_TEMPLATE)
     .replace(/\{event\}/gi, event.title)
     .replace(/\{date\}/gi, eventDate);
 
@@ -85,6 +121,7 @@ export async function POST(
             body: message,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: contact.phone!,
+            ...mediaParams(mediaUrl),
           });
           sent++;
           const { error: inviteTrackingError } = await supabase

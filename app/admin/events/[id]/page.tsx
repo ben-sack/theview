@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
+import { BlastPhotoPicker, BlastTestSend, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Event = {
   id: string;
@@ -66,11 +67,15 @@ export default function EventDetailPage() {
   const [removingRsvpId, setRemovingRsvpId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blasting, setBlasting] = useState(false);
-  const [blastResult, setBlastResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
+  const [blastResult, setBlastResult] = useState<BlastResult | null>(null);
+  const [invitePhoto, setInvitePhoto] = useState<BlastPhoto | null>(null);
+  const [inviteUploading, setInviteUploading] = useState(false);
   const [blastTemplate, setBlastTemplate] = useState("");
   const [eventMessage, setEventMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [messageResult, setMessageResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
+  const [messageResult, setMessageResult] = useState<BlastResult | null>(null);
+  const [textPhoto, setTextPhoto] = useState<BlastPhoto | null>(null);
+  const [textUploading, setTextUploading] = useState(false);
   const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
   const [textBlastOpen, setTextBlastOpen] = useState(false);
   const [guestListOpen, setGuestListOpen] = useState(false);
@@ -168,13 +173,19 @@ export default function EventDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: eventMessage,
+          mediaUrl: textPhoto?.url,
           contact_ids: textSelectedIds.size > 0 ? Array.from(textSelectedIds) : undefined,
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setMessageResult({ sent: 0, failures: [], error: data.error || "Send failed." });
+        return;
+      }
       setMessageResult(data);
       if (data.sent > 0) {
         setEventMessage("");
+        setTextPhoto(null);
         setTextSelectedIds(new Set());
         loadEvent(false);
       }
@@ -219,12 +230,18 @@ export default function EventDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message_template: blastTemplate,
+          mediaUrl: invitePhoto?.url,
           contact_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setBlastResult({ sent: 0, failures: [], error: data.error || "Send failed." });
+        return;
+      }
       setBlastResult(data);
       if (data.sent > 0) {
+        setInvitePhoto(null);
         setSelectedIds(new Set());
         loadEvent(false);
       }
@@ -295,8 +312,10 @@ export default function EventDetailPage() {
   const blastRecipientCount = selectedIds.size > 0 ? selectedIds.size : inviteCandidates.length;
   const blastSegments = getSegmentCount(blastTemplate);
   const blastCost = blastSegments > 0
-    ? (blastRecipientCount * blastSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    ? (blastRecipientCount * (invitePhoto ? TWILIO_PRICE_PER_MMS : blastSegments * TWILIO_PRICE_PER_SEGMENT)).toFixed(2)
     : null;
+  // Approximate: {name}/{rsvp_link} expand per person after this check.
+  const inviteTooLong = !!invitePhoto && blastTemplate.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
 
   const textableRsvps = rsvps.filter((r) => r.contacts?.phone);
   const textCandidates = textableRsvps.map((r) => ({
@@ -315,8 +334,9 @@ export default function EventDetailPage() {
   const textRecipientCount = textSelectedIds.size > 0 ? textSelectedIds.size : textableRsvps.length;
   const eventMessageSegments = getSegmentCount(eventMessage);
   const eventMessageCost = eventMessageSegments > 0
-    ? (textRecipientCount * eventMessageSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    ? (textRecipientCount * (textPhoto ? TWILIO_PRICE_PER_MMS : eventMessageSegments * TWILIO_PRICE_PER_SEGMENT)).toFixed(2)
     : null;
+  const textTooLong = !!textPhoto && eventMessage.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
 
   if (loading) {
     return (
@@ -652,12 +672,17 @@ export default function EventDetailPage() {
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between font-body text-xs text-tan">
-                      <span>{blastTemplate.length} characters · {blastSegments} {blastSegments === 1 ? "segment" : "segments"}</span>
+                      <span>{blastTemplate.length} characters · {invitePhoto ? "picture message" : `${blastSegments} ${blastSegments === 1 ? "segment" : "segments"}`}</span>
                       {blastCost !== null && (
                         <span>Est. cost: <strong className="text-espresso">${blastCost}</strong> + carrier fees</span>
                       )}
                     </div>
-                    {!isGsm7Compatible(blastTemplate) && (
+                    {inviteTooLong && (
+                      <p className="font-body text-[11px] text-rust leading-relaxed">
+                        Picture messages can hold up to {MMS_MAX_CHARS - OPT_OUT_FOOTER.length} characters of text — shorten the message to send.
+                      </p>
+                    )}
+                    {!invitePhoto && !isGsm7Compatible(blastTemplate) && (
                       <p className="font-body text-[11px] text-amber leading-relaxed">
                         Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
                       </p>
@@ -671,6 +696,15 @@ export default function EventDetailPage() {
                       {blastSaving ? "Saving…" : blastSaved ? "Saved as default ✓" : "Save as default"}
                     </button>
                   </div>
+
+                  <BlastPhotoPicker photo={invitePhoto} onChange={setInvitePhoto} onUploadingChange={setInviteUploading} />
+
+                  <BlastTestSend
+                    endpoint={`/api/admin/events/${id}/blast`}
+                    payload={{ message_template: blastTemplate, mediaUrl: invitePhoto?.url }}
+                    disabled={blasting || inviteUploading || !blastTemplate.trim() || inviteTooLong}
+                    hasPhoto={!!invitePhoto}
+                  />
 
                   {/* Recipient selection */}
                   <div className="border-t border-tan/15 pt-4 space-y-3">
@@ -734,10 +768,13 @@ export default function EventDetailPage() {
 
                   {blastResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+                      blastResult.error ? "bg-red-50 border border-red-200 text-red-800" :
                       blastResult.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
                       blastResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
                     }`}>
-                      {blastResult.connectionLost ? (
+                      {blastResult.error ? (
+                        <p>{blastResult.error}</p>
+                      ) : blastResult.connectionLost ? (
                         <p>Lost connection while waiting on a response — the send itself likely finished on the server. The Invited/Not Invited counts above have been refreshed to reflect real status; check them before resending.</p>
                       ) : (
                         <>
@@ -749,7 +786,7 @@ export default function EventDetailPage() {
                   )}
                   <button
                     onClick={sendBlast}
-                    disabled={blasting || !blastTemplate.trim()}
+                    disabled={blasting || inviteUploading || !blastTemplate.trim() || inviteTooLong}
                     className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
                   >
                     {blasting
@@ -797,12 +834,17 @@ export default function EventDetailPage() {
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between font-body text-xs text-tan">
-                      <span>{eventMessage.length} characters · {eventMessageSegments} {eventMessageSegments === 1 ? "segment" : "segments"}</span>
+                      <span>{eventMessage.length} characters · {textPhoto ? "picture message" : `${eventMessageSegments} ${eventMessageSegments === 1 ? "segment" : "segments"}`}</span>
                       {eventMessageCost !== null && (
                         <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong> + carrier fees</span>
                       )}
                     </div>
-                    {!isGsm7Compatible(eventMessage) && (
+                    {textTooLong && (
+                      <p className="font-body text-[11px] text-rust leading-relaxed">
+                        Picture messages can hold up to {MMS_MAX_CHARS - OPT_OUT_FOOTER.length} characters of text — shorten the message to send.
+                      </p>
+                    )}
+                    {!textPhoto && !isGsm7Compatible(eventMessage) && (
                       <p className="font-body text-[11px] text-amber leading-relaxed">
                         Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
                       </p>
@@ -816,6 +858,15 @@ export default function EventDetailPage() {
                       {eventMessageSaving ? "Saving…" : eventMessageSaved ? "Saved as default ✓" : "Save as default"}
                     </button>
                   </div>
+
+                  <BlastPhotoPicker photo={textPhoto} onChange={setTextPhoto} onUploadingChange={setTextUploading} />
+
+                  <BlastTestSend
+                    endpoint={`/api/admin/events/${id}/message`}
+                    payload={{ message: eventMessage, mediaUrl: textPhoto?.url }}
+                    disabled={sendingMessage || textUploading || !eventMessage.trim() || textTooLong}
+                    hasPhoto={!!textPhoto}
+                  />
 
                   {/* Recipient selection */}
                   <div className="border-t border-tan/15 pt-4 space-y-3">
@@ -882,10 +933,13 @@ export default function EventDetailPage() {
 
                   {messageResult && (
                     <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+                      messageResult.error ? "bg-red-50 border border-red-200 text-red-800" :
                       messageResult.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
                       messageResult.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
                     }`}>
-                      {messageResult.connectionLost ? (
+                      {messageResult.error ? (
+                        <p>{messageResult.error}</p>
+                      ) : messageResult.connectionLost ? (
                         <p>Lost connection while waiting on a response — the send itself likely finished on the server. Status above has been refreshed; check it before resending.</p>
                       ) : (
                         <>
@@ -897,7 +951,7 @@ export default function EventDetailPage() {
                   )}
                   <button
                     onClick={sendEventMessage}
-                    disabled={sendingMessage || !eventMessage.trim()}
+                    disabled={sendingMessage || textUploading || !eventMessage.trim() || textTooLong}
                     className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
                   >
                     {sendingMessage
@@ -921,8 +975,4 @@ export default function EventDetailPage() {
   );
 }
 
-// Twilio's published US toll-free base rate. Real bills also include a
-// separate per-message carrier surcharge (varies by recipient's carrier,
-// typically ~$0.003–0.007) that isn't reflected in this estimate — see the
-// note shown next to every cost estimate in the UI.
-const TWILIO_PRICE_PER_SEGMENT = 0.0083;
+type BlastResult = { sent: number; failures: string[]; connectionLost?: boolean; error?: string };

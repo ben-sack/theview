@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { GALLERY_MAX_PHOTOS } from "@/lib/gallery";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
+import { resizeImage } from "@/lib/resizeImage";
+import { BlastPhotoPicker, BlastTestSend, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Contact = {
   id: string;
@@ -1399,34 +1401,6 @@ function EventsTab() {
 
 type GalleryPhoto = { id: string; url: string; width: number; height: number };
 
-function resizeImage(file: File, maxDim = 1600, quality = 0.82): Promise<{ blob: Blob; width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      let { width, height } = img;
-      if (width > maxDim || height > maxDim) {
-        const scale = maxDim / Math.max(width, height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas not supported.")); return; }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        URL.revokeObjectURL(url);
-        if (!blob) { reject(new Error("Could not process image.")); return; }
-        resolve({ blob, width, height });
-      }, "image/jpeg", quality);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not load image.")); };
-    img.src = url;
-  });
-}
-
 function GalleryTab() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
@@ -1913,16 +1887,14 @@ function MessageTab() {
   );
 }
 
-// Twilio's published US toll-free base rate. Real bills also include a
-// separate per-message carrier surcharge (varies by recipient's carrier,
-// typically ~$0.003–0.007) that isn't reflected in this estimate — see the
-// note shown next to every cost estimate in the UI.
-const TWILIO_PRICE_PER_SEGMENT = 0.0083;
+type BlastResult = { sent: number; failures: string[]; connectionLost?: boolean; error?: string };
 
 function TextBlastTab() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent: number; failures: string[]; connectionLost?: boolean } | null>(null);
+  const [result, setResult] = useState<BlastResult | null>(null);
+  const [photo, setPhoto] = useState<BlastPhoto | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [optedOutCount, setOptedOutCount] = useState<number>(0);
 
@@ -1936,23 +1908,32 @@ function TextBlastTab() {
   }, []);
 
   const segments = getSegmentCount(message);
+  const perMessageCost = photo ? TWILIO_PRICE_PER_MMS : segments * TWILIO_PRICE_PER_SEGMENT;
   const estimatedCost = memberCount !== null && segments > 0
-    ? (memberCount * segments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    ? (memberCount * perMessageCost).toFixed(2)
     : null;
+  const mmsTooLong = photo !== null && message.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
 
   async function send() {
-    if (!message.trim()) return;
+    if (!message.trim() || mmsTooLong) return;
     setSending(true);
     setResult(null);
     try {
       const res = await fetch("/api/admin/text-blast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, mediaUrl: photo?.url }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setResult({ sent: 0, failures: [], error: data.error || "Send failed." });
+        return;
+      }
       setResult(data);
-      if (data.sent > 0) setMessage("");
+      if (data.sent > 0) {
+        setMessage("");
+        setPhoto(null);
+      }
     } catch {
       setResult({ sent: 0, failures: [], connectionLost: true });
     } finally {
@@ -1995,24 +1976,45 @@ function TextBlastTab() {
           className="w-full bg-white border border-tan/30 rounded-lg px-4 py-3 font-body text-sm text-black placeholder-tan/60 focus:outline-none focus:border-rust resize-none leading-relaxed"
         />
         <div className="flex items-center justify-between font-body text-xs text-tan">
-          <span>{message.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
+          {photo ? (
+            <span>{message.length} characters · picture message</span>
+          ) : (
+            <span>{message.length} characters · {segments} {segments === 1 ? "segment" : "segments"}</span>
+          )}
           {estimatedCost !== null && (
             <span>Est. cost: <strong className="text-espresso">${estimatedCost}</strong> + carrier fees</span>
           )}
         </div>
-        {!isGsm7Compatible(message) && (
+        {mmsTooLong && (
+          <p className="font-body text-[11px] text-rust leading-relaxed">
+            Picture messages can hold up to {MMS_MAX_CHARS - OPT_OUT_FOOTER.length} characters of text — shorten the message to send.
+          </p>
+        )}
+        {!photo && !isGsm7Compatible(message) && (
           <p className="font-body text-[11px] text-amber leading-relaxed">
             Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
           </p>
         )}
       </div>
 
+      <BlastPhotoPicker photo={photo} onChange={setPhoto} onUploadingChange={setUploading} />
+
+      <BlastTestSend
+        endpoint="/api/admin/text-blast"
+        payload={{ message, mediaUrl: photo?.url }}
+        disabled={sending || uploading || !message.trim() || mmsTooLong}
+        hasPhoto={!!photo}
+      />
+
       {result && (
         <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+          result.error ? "bg-red-50 border border-red-200 text-red-800" :
           result.connectionLost ? "bg-amber-50 border border-amber-200 text-amber-800" :
           result.failures.length === 0 ? "bg-green-50 border border-green-200 text-green-800" : "bg-amber-50 border border-amber-200 text-amber-800"
         }`}>
-          {result.connectionLost ? (
+          {result.error ? (
+            <p>{result.error}</p>
+          ) : result.connectionLost ? (
             <p>Lost connection while waiting on a response — the send itself likely finished on the server. Check the Members tab's opt-in status if you're unsure, before resending.</p>
           ) : (
             <>
@@ -2024,8 +2026,8 @@ function TextBlastTab() {
       )}
 
       <button
-        onClick={send}
-        disabled={sending || !message.trim()}
+        onClick={() => send()}
+        disabled={sending || uploading || !message.trim() || mmsTooLong}
         className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
       >
         {sending ? "Sending…" : "Send to All Members"}

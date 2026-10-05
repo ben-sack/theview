@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
+import { isValidMediaUrl, mediaParams, resolveTestRecipient } from "@/lib/blastMedia";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -16,10 +17,13 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { message, contact_ids } = await req.json();
+  const { message, contact_ids, mediaUrl, testPhone } = await req.json();
 
   if (!message?.trim()) {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
+  }
+  if (!isValidMediaUrl(mediaUrl)) {
+    return NextResponse.json({ error: "Invalid photo." }, { status: 400 });
   }
 
   const { data: event, error: eventError } = await supabase
@@ -30,6 +34,38 @@ export async function POST(
 
   if (eventError || !event) {
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  const eventDateTime = new Date(event.date);
+  const messageWithEventInfo = message
+    .replace(/\{event\}/gi, event.title)
+    .replace(/\{date\}/gi, formatEventDateShort(eventDateTime))
+    .replace(/\{door_time\}/gi, formatDoorTime(eventDateTime))
+    .replace(/\{address\}/gi, event.location || "the venue");
+
+  const client = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+
+  if (testPhone) {
+    const recipient = await resolveTestRecipient(testPhone);
+    if (!recipient) {
+      return NextResponse.json({ error: "Enter a valid US phone number for the test." }, { status: 400 });
+    }
+    // Test sends are not recorded in event_text_blasts, so they never
+    // mark anyone as "Already Sent".
+    try {
+      await client.messages.create({
+        body: `${messageWithEventInfo.replace(/\{name\}/gi, recipient.name.split(" ")[0])}\n\nReply STOP to opt out`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: recipient.phone,
+        ...mediaParams(mediaUrl),
+      });
+      return NextResponse.json({ sent: 1, failures: [] });
+    } catch {
+      return NextResponse.json({ sent: 0, failures: [recipient.phone] });
+    }
   }
 
   const { data: rsvps, error } = await supabase
@@ -44,18 +80,6 @@ export async function POST(
   const recipientIds: Set<string> | null = Array.isArray(contact_ids) && contact_ids.length > 0
     ? new Set(contact_ids)
     : null;
-
-  const eventDateTime = new Date(event.date);
-  const messageWithEventInfo = message
-    .replace(/\{event\}/gi, event.title)
-    .replace(/\{date\}/gi, formatEventDateShort(eventDateTime))
-    .replace(/\{door_time\}/gi, formatDoorTime(eventDateTime))
-    .replace(/\{address\}/gi, event.location || "the venue");
-
-  const client = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-  );
 
   let sent = 0;
   const failures: string[] = [];
@@ -80,6 +104,7 @@ export async function POST(
             body: `${personalized}\n\nReply STOP to opt out`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: contact.phone,
+            ...mediaParams(mediaUrl),
           });
           sent++;
           await supabase
