@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase";
 import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 
 // Only photos uploaded through /api/admin/text-blast/media are allowed —
@@ -13,20 +12,8 @@ export function mediaParams(mediaUrl: unknown) {
   return typeof mediaUrl === "string" && mediaUrl ? { mediaUrl: [mediaUrl] } : {};
 }
 
-// Resolves a "Send Test" number. If it belongs to an existing contact, their
-// real name is used so {name} personalizes the way members will see it.
-export async function resolveTestRecipient(
-  testPhone: unknown
-): Promise<{ phone: string; contactId: string | null; name: string } | null> {
+// Normalizes a "Send Test" number, or returns null if it isn't a US number.
+export function parseTestPhone(testPhone: unknown): string | null {
   const phone = normalizePhone(String(testPhone ?? ""));
-  if (!isUSPhoneNumber(phone)) return null;
-
-  const { data } = await supabase
-    .from("contacts")
-    .select("id, name")
-    .eq("phone", phone)
-    .limit(1)
-    .maybeSingle();
-
-  return { phone, contactId: data?.id ?? null, name: data?.name ?? "there" };
+  return isUSPhoneNumber(phone) ? phone : null;
 }

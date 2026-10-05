@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { isValidMediaUrl, mediaParams, resolveTestRecipient } from "@/lib/blastMedia";
+import { isValidMediaUrl, mediaParams, parseTestPhone } from "@/lib/blastMedia";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -53,11 +53,11 @@ export async function POST(req: NextRequest) {
 
   if (testPhone) {
     // Test send: one message to a single number, skipping the member list.
-    const recipient = await resolveTestRecipient(testPhone);
-    if (!recipient) {
+    const phone = parseTestPhone(testPhone);
+    if (!phone) {
       return NextResponse.json({ error: "Enter a valid US phone number for the test." }, { status: 400 });
     }
-    contacts = [{ id: null, phone: recipient.phone, name: recipient.phone }];
+    contacts = [{ id: null, phone, name: phone }];
   } else {
     const { data, error } = await supabase
       .from("contacts")

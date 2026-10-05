@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
-import { BlastPhotoPicker, BlastTestSend, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
+import { BlastPhotoPicker, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Event = {
   id: string;
@@ -70,12 +70,14 @@ export default function EventDetailPage() {
   const [blastResult, setBlastResult] = useState<BlastResult | null>(null);
   const [invitePhoto, setInvitePhoto] = useState<BlastPhoto | null>(null);
   const [inviteUploading, setInviteUploading] = useState(false);
+  const [testingInvite, setTestingInvite] = useState(false);
   const [blastTemplate, setBlastTemplate] = useState("");
   const [eventMessage, setEventMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageResult, setMessageResult] = useState<BlastResult | null>(null);
   const [textPhoto, setTextPhoto] = useState<BlastPhoto | null>(null);
   const [textUploading, setTextUploading] = useState(false);
+  const [testingText, setTestingText] = useState(false);
   const [rsvpBlastOpen, setRsvpBlastOpen] = useState(false);
   const [textBlastOpen, setTextBlastOpen] = useState(false);
   const [guestListOpen, setGuestListOpen] = useState(false);
@@ -163,9 +165,11 @@ export default function EventDetailPage() {
     setTextSelectedIds(new Set(ids));
   }
 
-  async function sendEventMessage() {
+  // test = send only to the selected people, without marking them "Sent".
+  async function sendEventMessage(test = false) {
     if (!eventMessage.trim()) return;
-    setSendingMessage(true);
+    if (test && textSelectedIds.size === 0) return;
+    if (test) setTestingText(true); else setSendingMessage(true);
     setMessageResult(null);
     try {
       const res = await fetch(`/api/admin/events/${id}/message`, {
@@ -175,6 +179,7 @@ export default function EventDetailPage() {
           message: eventMessage,
           mediaUrl: textPhoto?.url,
           contact_ids: textSelectedIds.size > 0 ? Array.from(textSelectedIds) : undefined,
+          test,
         }),
       });
       const data = await res.json();
@@ -182,18 +187,22 @@ export default function EventDetailPage() {
         setMessageResult({ sent: 0, failures: [], error: data.error || "Send failed." });
         return;
       }
-      setMessageResult(data);
-      if (data.sent > 0) {
+      setMessageResult({ ...data, test });
+      // Always clear the selection after a test so the main button goes back
+      // to "Send to All" rather than quietly sending the real blast to testers.
+      if (test) setTextSelectedIds(new Set());
+      else if (data.sent > 0) {
         setEventMessage("");
         setTextPhoto(null);
         setTextSelectedIds(new Set());
         loadEvent(false);
       }
     } catch {
-      setMessageResult({ sent: 0, failures: [], connectionLost: true });
+      setMessageResult({ sent: 0, failures: [], connectionLost: true, test });
+      if (test) setTextSelectedIds(new Set());
       loadEvent(false);
     } finally {
-      setSendingMessage(false);
+      if (test) setTestingText(false); else setSendingMessage(false);
     }
   }
 
@@ -221,8 +230,10 @@ export default function EventDetailPage() {
     setTimeout(() => setEventMessageSaved(false), 3000);
   }
 
-  async function sendBlast() {
-    setBlasting(true);
+  // test = send only to the selected people, without marking them "Invited".
+  async function sendBlast(test = false) {
+    if (test && selectedIds.size === 0) return;
+    if (test) setTestingInvite(true); else setBlasting(true);
     setBlastResult(null);
     try {
       const res = await fetch(`/api/admin/events/${id}/blast`, {
@@ -232,6 +243,7 @@ export default function EventDetailPage() {
           message_template: blastTemplate,
           mediaUrl: invitePhoto?.url,
           contact_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+          test,
         }),
       });
       const data = await res.json();
@@ -239,8 +251,11 @@ export default function EventDetailPage() {
         setBlastResult({ sent: 0, failures: [], error: data.error || "Send failed." });
         return;
       }
-      setBlastResult(data);
-      if (data.sent > 0) {
+      setBlastResult({ ...data, test });
+      // Always clear the selection after a test so the main button goes back
+      // to "Send to All" rather than quietly sending the real blast to testers.
+      if (test) setSelectedIds(new Set());
+      else if (data.sent > 0) {
         setInvitePhoto(null);
         setSelectedIds(new Set());
         loadEvent(false);
@@ -249,10 +264,11 @@ export default function EventDetailPage() {
       // The connection can drop before the response arrives on a large send,
       // even though the send itself keeps running server-side and finishes
       // correctly — reload real state instead of leaving stale/crashed UI.
-      setBlastResult({ sent: 0, failures: [], connectionLost: true });
+      setBlastResult({ sent: 0, failures: [], connectionLost: true, test });
+      if (test) setSelectedIds(new Set());
       loadEvent(false);
     } finally {
-      setBlasting(false);
+      if (test) setTestingInvite(false); else setBlasting(false);
     }
   }
 
@@ -699,13 +715,6 @@ export default function EventDetailPage() {
 
                   <BlastPhotoPicker photo={invitePhoto} onChange={setInvitePhoto} onUploadingChange={setInviteUploading} />
 
-                  <BlastTestSend
-                    endpoint={`/api/admin/events/${id}/blast`}
-                    payload={{ message_template: blastTemplate, mediaUrl: invitePhoto?.url }}
-                    disabled={blasting || inviteUploading || !blastTemplate.trim() || inviteTooLong}
-                    hasPhoto={!!invitePhoto}
-                  />
-
                   {/* Recipient selection */}
                   <div className="border-t border-tan/15 pt-4 space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -778,23 +787,34 @@ export default function EventDetailPage() {
                         <p>Lost connection while waiting on a response — the send itself likely finished on the server. The Invited/Not Invited counts above have been refreshed to reflect real status; check them before resending.</p>
                       ) : (
                         <>
-                          <p>Sent to {blastResult.sent} members.</p>
+                          <p>{blastResult.test ? "Test sent to" : "Sent to"} {blastResult.sent} {blastResult.sent === 1 ? "member" : "members"}{blastResult.test ? " — not marked as invited." : "."}</p>
                           {blastResult.failures.length > 0 && <p className="mt-1">Failed: {blastResult.failures.join(", ")}</p>}
                         </>
                       )}
                     </div>
                   )}
-                  <button
-                    onClick={sendBlast}
-                    disabled={blasting || inviteUploading || !blastTemplate.trim() || inviteTooLong}
-                    className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-                  >
-                    {blasting
-                      ? "Sending…"
-                      : selectedIds.size > 0
-                      ? `Send to ${selectedIds.size} Selected`
-                      : `Send RSVP Blast to All ${inviteCandidates.length} Members`}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => sendBlast()}
+                      disabled={blasting || testingInvite || inviteUploading || !blastTemplate.trim() || inviteTooLong}
+                      className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {blasting
+                        ? "Sending…"
+                        : selectedIds.size > 0
+                        ? `Send to ${selectedIds.size} Selected`
+                        : `Send RSVP Blast to All ${inviteCandidates.length} Members`}
+                    </button>
+                    <button
+                      onClick={() => sendBlast(true)}
+                      disabled={selectedIds.size === 0 || blasting || testingInvite || inviteUploading || !blastTemplate.trim() || inviteTooLong}
+                      title={selectedIds.size === 0 ? "Select people below to send them a test" : undefined}
+                      className="font-body text-sm font-medium px-5 py-3 border border-espresso text-espresso rounded hover:bg-espresso hover:text-ivory transition-colors duration-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-espresso"
+                    >
+                      {testingInvite ? "Sending…" : selectedIds.size > 0 ? `Send as Test to ${selectedIds.size}` : "Send as Test"}
+                    </button>
+                  </div>
+                  <p className="font-body text-[11px] text-tan -mt-1">Send as Test texts only the people you've selected and doesn't mark them as invited.</p>
                 </>
               )}
             </div>
@@ -860,13 +880,6 @@ export default function EventDetailPage() {
                   </div>
 
                   <BlastPhotoPicker photo={textPhoto} onChange={setTextPhoto} onUploadingChange={setTextUploading} />
-
-                  <BlastTestSend
-                    endpoint={`/api/admin/events/${id}/message`}
-                    payload={{ message: eventMessage, mediaUrl: textPhoto?.url }}
-                    disabled={sendingMessage || textUploading || !eventMessage.trim() || textTooLong}
-                    hasPhoto={!!textPhoto}
-                  />
 
                   {/* Recipient selection */}
                   <div className="border-t border-tan/15 pt-4 space-y-3">
@@ -943,23 +956,34 @@ export default function EventDetailPage() {
                         <p>Lost connection while waiting on a response — the send itself likely finished on the server. Status above has been refreshed; check it before resending.</p>
                       ) : (
                         <>
-                          <p>Sent to {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}.</p>
+                          <p>{messageResult.test ? "Test sent to" : "Sent to"} {messageResult.sent} {messageResult.sent === 1 ? "person" : "people"}{messageResult.test ? " — not marked as sent." : "."}</p>
                           {messageResult.failures.length > 0 && <p className="mt-1">Failed: {messageResult.failures.join(", ")}</p>}
                         </>
                       )}
                     </div>
                   )}
-                  <button
-                    onClick={sendEventMessage}
-                    disabled={sendingMessage || textUploading || !eventMessage.trim() || textTooLong}
-                    className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
-                  >
-                    {sendingMessage
-                      ? "Sending…"
-                      : textSelectedIds.size > 0
-                      ? `Send to ${textSelectedIds.size} Selected`
-                      : `Send to All ${textableRsvps.length} ${textableRsvps.length === 1 ? "RSVP" : "RSVPs"}`}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => sendEventMessage()}
+                      disabled={sendingMessage || testingText || textUploading || !eventMessage.trim() || textTooLong}
+                      className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {sendingMessage
+                        ? "Sending…"
+                        : textSelectedIds.size > 0
+                        ? `Send to ${textSelectedIds.size} Selected`
+                        : `Send to All ${textableRsvps.length} ${textableRsvps.length === 1 ? "RSVP" : "RSVPs"}`}
+                    </button>
+                    <button
+                      onClick={() => sendEventMessage(true)}
+                      disabled={textSelectedIds.size === 0 || sendingMessage || testingText || textUploading || !eventMessage.trim() || textTooLong}
+                      title={textSelectedIds.size === 0 ? "Select people below to send them a test" : undefined}
+                      className="font-body text-sm font-medium px-5 py-2.5 border border-espresso text-espresso rounded hover:bg-espresso hover:text-ivory transition-colors duration-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-espresso"
+                    >
+                      {testingText ? "Sending…" : textSelectedIds.size > 0 ? `Send as Test to ${textSelectedIds.size}` : "Send as Test"}
+                    </button>
+                  </div>
+                  <p className="font-body text-[11px] text-tan -mt-1">Send as Test texts only the people you've selected and doesn't mark them as sent.</p>
                 </>
               )}
             </div>
@@ -975,4 +999,4 @@ export default function EventDetailPage() {
   );
 }
 
-type BlastResult = { sent: number; failures: string[]; connectionLost?: boolean; error?: string };
+type BlastResult = { sent: number; failures: string[]; connectionLost?: boolean; error?: string; test?: boolean };

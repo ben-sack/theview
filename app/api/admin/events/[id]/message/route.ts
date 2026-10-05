@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
-import { isValidMediaUrl, mediaParams, resolveTestRecipient } from "@/lib/blastMedia";
+import { isValidMediaUrl, mediaParams } from "@/lib/blastMedia";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { message, contact_ids, mediaUrl, testPhone } = await req.json();
+  const { message, contact_ids, mediaUrl, test } = await req.json();
 
   if (!message?.trim()) {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
@@ -48,24 +48,10 @@ export async function POST(
     process.env.TWILIO_AUTH_TOKEN
   );
 
-  if (testPhone) {
-    const recipient = await resolveTestRecipient(testPhone);
-    if (!recipient) {
-      return NextResponse.json({ error: "Enter a valid US phone number for the test." }, { status: 400 });
-    }
-    // Test sends are not recorded in event_text_blasts, so they never
-    // mark anyone as "Already Sent".
-    try {
-      await client.messages.create({
-        body: `${messageWithEventInfo.replace(/\{name\}/gi, recipient.name.split(" ")[0])}\n\nReply STOP to opt out`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: recipient.phone,
-        ...mediaParams(mediaUrl),
-      });
-      return NextResponse.json({ sent: 1, failures: [] });
-    } catch {
-      return NextResponse.json({ sent: 0, failures: [recipient.phone] });
-    }
+  // Test sends go only to the hand-picked contacts and are never recorded
+  // in event_text_blasts, so no one gets marked "Already Sent".
+  if (test && !(Array.isArray(contact_ids) && contact_ids.length > 0)) {
+    return NextResponse.json({ error: "Select at least one person to send a test to." }, { status: 400 });
   }
 
   const { data: rsvps, error } = await supabase
@@ -107,6 +93,7 @@ export async function POST(
             ...mediaParams(mediaUrl),
           });
           sent++;
+          if (test) return;
           await supabase
             .from("event_text_blasts")
             .upsert({ event_id: id, contact_id: contact.id, sent_at: new Date().toISOString() }, { onConflict: "event_id,contact_id" });
