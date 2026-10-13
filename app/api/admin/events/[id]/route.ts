@@ -113,6 +113,17 @@ export async function GET(
       waitlisted: waitlistedIds.has(m.id),
     }));
 
+  // Pending people who asked to join this event's list through its public
+  // signup page. Tolerates the table not existing yet.
+  const { data: signups } = await supabase
+    .from("event_signups")
+    .select("id, created_at, contacts(id, name, ig_handle, status)")
+    .eq("event_id", id)
+    .order("created_at", { ascending: true });
+  const pendingSignups = (signups ?? [])
+    .map((s) => ({ ...s, contacts: Array.isArray(s.contacts) ? s.contacts[0] : s.contacts }))
+    .filter((s) => s.contacts?.status === "pending");
+
   const genderBreakdown = { male: 0, female: 0, unsure: 0 };
   for (const r of rsvps ?? []) {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -121,7 +132,7 @@ export async function GET(
     genderBreakdown[gender]++;
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, addCandidates, genderBreakdown, textBlastSentIds });
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, addCandidates, pendingSignups, genderBreakdown, textBlastSentIds });
 }
 
 export async function PATCH(

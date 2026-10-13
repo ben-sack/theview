@@ -22,6 +22,8 @@ type Contact = {
   created_at: string;
   sms_opted_out: boolean;
   sms_opt_out_source: "signup" | "stop_text" | "send_bounce" | null;
+  signup_events?: string[];
+  previously_rejected?: boolean;
 };
 
 type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "message" | "blast" | "referrals" | "settings";
@@ -395,7 +397,17 @@ function PendingTab({
                       Approve
                     </button>
                   </td>
-                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-3 px-3 sm:py-3.5 sm:px-4 text-center">{capitalizeName(c.name)}</td>
+                  <td className="font-body text-xs sm:text-sm font-medium text-espresso py-3 px-3 sm:py-3.5 sm:px-4 text-center">
+                    {capitalizeName(c.name)}
+                    {(c.signup_events?.length ?? 0) > 0 && (
+                      <span className="block font-normal text-[10px] tracking-wide text-amber whitespace-nowrap" title="Approving adds them to this event's list">
+                        → {c.signup_events!.join(", ")} list
+                      </span>
+                    )}
+                    {c.previously_rejected && (
+                      <span className="block font-normal text-[10px] tracking-wide text-rust/70 whitespace-nowrap">Previously rejected</span>
+                    )}
+                  </td>
                   <td className="font-body text-xs sm:text-sm py-3 px-3 sm:py-3.5 sm:px-4 text-center">
                     {c.ig_handle ? (
                       <a

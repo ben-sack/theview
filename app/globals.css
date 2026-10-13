@@ -86,3 +86,29 @@ body::before {
 textarea.field {
   resize: none;
 }
+
+/* Event signup page (/e/[slug]) */
+@keyframes signup-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes signup-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6) rotate(0deg); }
+  50% { opacity: 0.9; transform: scale(1) rotate(45deg); }
+}
+@keyframes signup-sweep {
+  0% { transform: translateX(-30%) rotate(8deg); opacity: 0; }
+  40% { opacity: 0.55; }
+  100% { transform: translateX(130%) rotate(8deg); opacity: 0; }
+}
+@keyframes signup-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+.signup-rise { animation: signup-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.signup-twinkle { animation: signup-twinkle 3.6s ease-in-out infinite; }
+.signup-sweep { animation: signup-sweep 7s ease-in-out infinite; }
+.signup-glow { animation: signup-glow 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .signup-rise, .signup-twinkle, .signup-sweep, .signup-glow { animation: none; }
+}

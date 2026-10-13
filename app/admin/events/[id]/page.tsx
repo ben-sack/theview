@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
+import { resizeImage } from "@/lib/resizeImage";
+import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE } from "@/lib/eventSignup";
 import { BlastPhotoPicker, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Event = {
@@ -13,6 +15,17 @@ type Event = {
   partners: string | null;
   allow_guests: boolean;
   event_number: number;
+  signup_enabled?: boolean;
+  signup_slug?: string | null;
+  signup_flyer_url?: string | null;
+  signup_headline?: string | null;
+  signup_copy?: string | null;
+};
+
+type PendingSignup = {
+  id: string;
+  created_at: string;
+  contacts: { id: string; name: string; ig_handle: string | null } | null;
 };
 
 type Rsvp = {
@@ -112,6 +125,20 @@ export default function EventDetailPage() {
   const [addResult, setAddResult] = useState<AddResult | null>(null);
   const [addMessageSaving, setAddMessageSaving] = useState(false);
   const [addMessageSaved, setAddMessageSaved] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [signupEnabled, setSignupEnabled] = useState(false);
+  const [signupSlug, setSignupSlug] = useState("");
+  const [signupFlyer, setSignupFlyer] = useState("");
+  const [signupHeadline, setSignupHeadline] = useState("");
+  const [signupCopy, setSignupCopy] = useState("");
+  const [flyerUploading, setFlyerUploading] = useState(false);
+  const [signupSaving, setSignupSaving] = useState(false);
+  const [signupStatus, setSignupStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [signupApprovedMessage, setSignupApprovedMessage] = useState("");
+  const [signupApprovedSaving, setSignupApprovedSaving] = useState(false);
+  const [signupApprovedSaved, setSignupApprovedSaved] = useState(false);
+  const [pendingSignups, setPendingSignups] = useState<PendingSignup[]>([]);
   const [panelSearch, setPanelSearch] = useState("");
   const [panelSort, setPanelSort] = useState<"date" | "alpha">("date");
 
@@ -130,6 +157,7 @@ export default function EventDetailPage() {
       setWaitlist(d.waitlist ?? []);
       setInviteCandidates(d.inviteCandidates ?? []);
       setAddCandidates(d.addCandidates ?? []);
+      setPendingSignups(d.pendingSignups ?? []);
       setGenderBreakdown(d.genderBreakdown ?? null);
       setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
       if (isInitial) {
@@ -138,6 +166,12 @@ export default function EventDetailPage() {
           `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`
         );
         setAddMessage(settings?.list_add_sms_template || DEFAULT_LIST_ADD_TEMPLATE);
+        setSignupApprovedMessage(settings?.signup_approved_sms_template || DEFAULT_SIGNUP_APPROVED_TEMPLATE);
+        setSignupEnabled(!!d.event.signup_enabled);
+        setSignupSlug(d.event.signup_slug || slugify(d.event.title));
+        setSignupFlyer(d.event.signup_flyer_url || "");
+        setSignupHeadline(d.event.signup_headline || "");
+        setSignupCopy(d.event.signup_copy || "");
         setEventMessage(
           settings?.event_text_blast_default_template ||
           `Hey, just a reminder that doors open at {door_time} this Saturday. Here is the address: {address}. Entry is first come first serve based on capacity. Make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`
@@ -343,6 +377,81 @@ export default function EventDetailPage() {
       loadEvent(false);
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function uploadFlyer(file: File | undefined) {
+    if (!file) return;
+    setFlyerUploading(true);
+    setSignupStatus(null);
+    try {
+      const { blob } = await resizeImage(file);
+      const form = new FormData();
+      form.append("file", blob, "flyer.jpg");
+      const res = await fetch("/api/admin/text-blast/media", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed.");
+      setSignupFlyer(data.url);
+    } catch (err) {
+      setSignupStatus({ ok: false, text: err instanceof Error ? err.message : "Upload failed." });
+    } finally {
+      setFlyerUploading(false);
+    }
+  }
+
+  async function saveSignupPage(enabled = signupEnabled) {
+    setSignupSaving(true);
+    setSignupStatus(null);
+    try {
+      const res = await fetch(`/api/admin/events/${id}/signup-page`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signup_enabled: enabled,
+          signup_slug: signupSlug,
+          signup_flyer_url: signupFlyer || null,
+          signup_headline: signupHeadline,
+          signup_copy: signupCopy,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSignupStatus({ ok: false, text: data.error || "Save failed." });
+        return;
+      }
+      setSignupEnabled(enabled);
+      setSignupSlug(data.signup_slug);
+      setSignupStatus({ ok: true, text: enabled ? "Saved — the page is live." : "Saved — the page is off." });
+    } catch {
+      setSignupStatus({ ok: false, text: "Save failed. Please try again." });
+    } finally {
+      setSignupSaving(false);
+    }
+  }
+
+  async function saveSignupApprovedDefault() {
+    setSignupApprovedSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "signup_approved_sms_template", value: signupApprovedMessage }),
+    });
+    setSignupApprovedSaving(false);
+    setSignupApprovedSaved(true);
+    setTimeout(() => setSignupApprovedSaved(false), 3000);
+  }
+
+  function signupUrl() {
+    return `${window.location.origin}/e/${signupSlug}`;
+  }
+
+  async function copySignupLink() {
+    try {
+      await navigator.clipboard.writeText(signupUrl());
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      prompt("Copy this link:", signupUrl());
     }
   }
 
@@ -739,6 +848,182 @@ export default function EventDetailPage() {
 
             {/* Guest list — mobile only, sits right under event info */}
             <div className="lg:hidden">{guestListPanel}</div>
+
+            {/* Public signup page */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
+              <button
+                type="button"
+                onClick={() => setSignupOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="font-body text-sm font-medium text-espresso">Public Signup Page</span>
+                  <span className={`font-body text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${signupEnabled ? "bg-green-50 text-green-700" : "bg-tan/10 text-tan"}`}>
+                    {signupEnabled ? "Live" : "Off"}
+                  </span>
+                  {pendingSignups.length > 0 && (
+                    <span className="font-body text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber/10 text-amber">
+                      {pendingSignups.length} pending
+                    </span>
+                  )}
+                </span>
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={`shrink-0 text-tan transition-transform duration-200 ${signupOpen ? "rotate-180" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {signupOpen && (
+                <>
+                  <p className="font-body text-xs text-tan -mt-2">
+                    A shareable page anyone can use to ask to get on this event&apos;s list. New people land in Pending — approving them adds them to this list automatically. Existing members go straight onto the list, and rejected people go back to Pending for another look.
+                  </p>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-xs font-medium text-espresso">Link</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center flex-1 min-w-0 bg-ivory border border-tan/30 rounded px-3 py-2 font-body text-sm">
+                        <span className="text-tan shrink-0">theview.la/e/</span>
+                        <input
+                          value={signupSlug}
+                          onChange={(e) => setSignupSlug(e.target.value)}
+                          onBlur={() => setSignupSlug((v) => slugify(v))}
+                          className="flex-1 min-w-0 bg-transparent text-black focus:outline-none"
+                        />
+                      </div>
+                      <button type="button" onClick={copySignupLink} className="font-body text-xs px-3 py-2 border border-tan/40 rounded hover:border-rust transition-colors">
+                        {linkCopied ? "Copied ✓" : "Copy link"}
+                      </button>
+                      <a href={`/e/${signupSlug}`} target="_blank" rel="noopener noreferrer" className="font-body text-xs px-3 py-2 border border-tan/40 rounded hover:border-rust transition-colors">
+                        Preview
+                      </a>
+                    </div>
+                    <p className="font-body text-[11px] text-tan">Preview works even while the page is off — only you can find it until it&apos;s live. Save after changing the link name.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-body text-xs font-medium text-espresso">Flyer</p>
+                    {signupFlyer ? (
+                      <div className="flex items-start gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={signupFlyer} alt="Event flyer" className="w-24 rounded border border-tan/30" />
+                        <div className="font-body text-xs space-y-2">
+                          <label className={`block text-rust hover:underline cursor-pointer ${flyerUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                            {flyerUploading ? "Uploading…" : "Replace"}
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadFlyer(e.target.files?.[0]); e.target.value = ""; }} />
+                          </label>
+                          <button type="button" onClick={() => setSignupFlyer("")} className="text-tan hover:underline">Remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className={`inline-block font-body text-sm px-4 py-2 border border-tan/40 rounded cursor-pointer hover:border-rust transition-colors ${flyerUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                        {flyerUploading ? "Uploading…" : "Upload flyer"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { uploadFlyer(e.target.files?.[0]); e.target.value = ""; }} />
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-xs font-medium text-espresso">Headline</p>
+                    <input
+                      value={signupHeadline}
+                      onChange={(e) => setSignupHeadline(e.target.value)}
+                      placeholder="e.g. A night of disco, funk & soul"
+                      className="w-full bg-ivory border border-tan/30 rounded px-3 py-2 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-xs font-medium text-espresso">About the event</p>
+                    <textarea
+                      value={signupCopy}
+                      onChange={(e) => setSignupCopy(e.target.value)}
+                      rows={6}
+                      placeholder="What's the night about? Leave a blank line between paragraphs."
+                      className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-y leading-relaxed"
+                    />
+                  </div>
+
+                  {signupStatus && (
+                    <p className={`font-body text-xs ${signupStatus.ok ? "text-green-700" : "text-rust"}`}>{signupStatus.text}</p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => saveSignupPage()}
+                      disabled={signupSaving || flyerUploading}
+                      className="font-body text-sm font-medium px-5 py-2.5 border border-espresso text-espresso rounded hover:bg-espresso hover:text-ivory transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {signupSaving ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!signupEnabled && !confirm("Turn the page on? Anyone with the link will be able to ask to join this list.")) return;
+                        saveSignupPage(!signupEnabled);
+                      }}
+                      disabled={signupSaving || flyerUploading}
+                      className="font-body text-sm font-medium px-6 py-2.5 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {signupEnabled ? "Save & Turn Off" : "Save & Go Live"}
+                    </button>
+                  </div>
+
+                  <div className="border-t border-tan/15 pt-4 space-y-1">
+                    <p className="font-body text-xs font-medium text-espresso">Approval text</p>
+                    <p className="font-body text-xs text-tan">
+                      Sent instead of the normal welcome text when you approve someone who signed up through a page like this. Use{" "}
+                      <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span>,{" "}
+                      <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{event}"}</span>, and{" "}
+                      <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{date}"}</span>. Shared by all events.
+                    </p>
+                    <textarea
+                      value={signupApprovedMessage}
+                      onChange={(e) => setSignupApprovedMessage(e.target.value)}
+                      rows={4}
+                      className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black focus:outline-none focus:border-rust resize-none leading-relaxed"
+                    />
+                    <div className="flex items-center justify-between font-body text-xs text-tan">
+                      <span>{signupApprovedMessage.length} characters · {getSegmentCount(signupApprovedMessage)} segments</span>
+                      <button
+                        type="button"
+                        onClick={saveSignupApprovedDefault}
+                        disabled={signupApprovedSaving || !signupApprovedMessage.trim()}
+                        className="text-rust hover:underline disabled:opacity-40"
+                      >
+                        {signupApprovedSaving ? "Saving…" : signupApprovedSaved ? "Saved ✓" : "Save approval text"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-tan/15 pt-4 space-y-2">
+                    <p className="font-body text-xs font-medium text-espresso">
+                      Waiting for approval ({pendingSignups.length})
+                    </p>
+                    {pendingSignups.length === 0 ? (
+                      <p className="font-body text-xs text-tan italic">No one yet.</p>
+                    ) : (
+                      <>
+                        <div className="max-h-48 overflow-y-auto border border-tan/20 rounded divide-y divide-tan/10">
+                          {pendingSignups.map((s) => (
+                            <div key={s.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                              <span className="font-body text-sm text-espresso truncate">{s.contacts?.name}</span>
+                              <span className="font-body text-xs text-tan shrink-0">
+                                {new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <a href="/admin?tab=pending" className="inline-block font-body text-xs text-rust hover:underline">
+                          Review them on the Pending tab →
+                        </a>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Manually add members to the guest list */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
