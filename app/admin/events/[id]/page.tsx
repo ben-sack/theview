@@ -50,6 +50,16 @@ type InviteCandidate = {
   rsvped: boolean;
 };
 
+type AddCandidate = {
+  id: string;
+  name: string;
+  ig_handle: string | null;
+  textable: boolean;
+  waitlisted: boolean;
+};
+
+const DEFAULT_LIST_ADD_TEMPLATE = `Hey {name}, you've been added to the list for {event} on {date}. See you soon!`;
+
 type GenderBreakdown = {
   male: number;
   female: number;
@@ -92,6 +102,16 @@ export default function EventDetailPage() {
   const [blastSaved, setBlastSaved] = useState(false);
   const [eventMessageSaving, setEventMessageSaving] = useState(false);
   const [eventMessageSaved, setEventMessageSaved] = useState(false);
+  const [addListOpen, setAddListOpen] = useState(false);
+  const [addCandidates, setAddCandidates] = useState<AddCandidate[]>([]);
+  const [addSelectedIds, setAddSelectedIds] = useState<Set<string>>(new Set());
+  const [addSearch, setAddSearch] = useState("");
+  const [addNotify, setAddNotify] = useState(true);
+  const [addMessage, setAddMessage] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addResult, setAddResult] = useState<AddResult | null>(null);
+  const [addMessageSaving, setAddMessageSaving] = useState(false);
+  const [addMessageSaved, setAddMessageSaved] = useState(false);
   const [panelSearch, setPanelSearch] = useState("");
   const [panelSort, setPanelSort] = useState<"date" | "alpha">("date");
 
@@ -109,6 +129,7 @@ export default function EventDetailPage() {
       setRsvps(d.rsvps ?? []);
       setWaitlist(d.waitlist ?? []);
       setInviteCandidates(d.inviteCandidates ?? []);
+      setAddCandidates(d.addCandidates ?? []);
       setGenderBreakdown(d.genderBreakdown ?? null);
       setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
       if (isInitial) {
@@ -116,6 +137,7 @@ export default function EventDetailPage() {
           settings?.rsvp_blast_default_template ||
           `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`
         );
+        setAddMessage(settings?.list_add_sms_template || DEFAULT_LIST_ADD_TEMPLATE);
         setEventMessage(
           settings?.event_text_blast_default_template ||
           `Hey, just a reminder that doors open at {door_time} this Saturday. Here is the address: {address}. Entry is first come first serve based on capacity. Make sure you arrive early to secure your spot. This event is 21+ // Government Issued ID will be required upon entry.`
@@ -272,6 +294,58 @@ export default function EventDetailPage() {
     }
   }
 
+  function toggleAddSelect(contactId: string) {
+    setAddSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  }
+
+  async function saveAddMessageDefault() {
+    setAddMessageSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "list_add_sms_template", value: addMessage }),
+    });
+    setAddMessageSaving(false);
+    setAddMessageSaved(true);
+    setTimeout(() => setAddMessageSaved(false), 3000);
+  }
+
+  async function addToList() {
+    if (addSelectedIds.size === 0 || !event) return;
+    const count = addSelectedIds.size;
+    const confirmText = addNotify
+      ? `Add ${count} ${count === 1 ? "member" : "members"} to the ${event.title} list and text them?`
+      : `Add ${count} ${count === 1 ? "member" : "members"} to the ${event.title} list without texting them?`;
+    if (!confirm(confirmText)) return;
+    setAdding(true);
+    setAddResult(null);
+    try {
+      const res = await fetch(`/api/admin/events/${id}/add-guests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_ids: Array.from(addSelectedIds), notify: addNotify, message: addMessage }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddResult({ added: 0, texted: 0, failures: [], notTextable: [], notified: addNotify, error: data.error || "Failed to add." });
+        return;
+      }
+      setAddResult({ ...data, notified: addNotify });
+      setAddSelectedIds(new Set());
+      loadEvent(false);
+    } catch {
+      setAddResult({ added: 0, texted: 0, failures: [], notTextable: [], notified: addNotify, connectionLost: true });
+      loadEvent(false);
+    } finally {
+      setAdding(false);
+    }
+  }
+
   async function promoteFromWaitlist(waitlistId: string) {
     setPromotingId(waitlistId);
     const res = await fetch(`/api/admin/events/${id}/promote`, {
@@ -332,6 +406,17 @@ export default function EventDetailPage() {
     : null;
   // Approximate: {name}/{rsvp_link} expand per person after this check.
   const inviteTooLong = !!invitePhoto && blastTemplate.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
+
+  const addQuery = addSearch.trim().toLowerCase();
+  const filteredAddCandidates = addCandidates.filter((c) =>
+    !addQuery || c.name.toLowerCase().includes(addQuery) || (c.ig_handle ?? "").toLowerCase().includes(addQuery)
+  );
+  const addSelectedTextable = addCandidates.filter((c) => addSelectedIds.has(c.id) && c.textable).length;
+  const addSegments = getSegmentCount(addMessage);
+  const addCost = addNotify && addSegments > 0 && addSelectedTextable > 0
+    ? (addSelectedTextable * addSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
+    : null;
+  const addOverCapacity = event ? totalAttending + addSelectedIds.size > event.capacity : false;
 
   const textableRsvps = rsvps.filter((r) => r.contacts?.phone);
   const textCandidates = textableRsvps.map((r) => ({
@@ -654,6 +739,166 @@ export default function EventDetailPage() {
 
             {/* Guest list — mobile only, sits right under event info */}
             <div className="lg:hidden">{guestListPanel}</div>
+
+            {/* Manually add members to the guest list */}
+            <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
+              <button
+                type="button"
+                onClick={() => setAddListOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left"
+              >
+                <p className="font-body text-sm font-medium text-espresso">Add Members to List</p>
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={`shrink-0 text-tan transition-transform duration-200 ${addListOpen ? "rotate-180" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {addListOpen && (
+                <>
+                  <p className="font-body text-xs text-tan -mt-2">
+                    Puts approved members straight onto the guest list — no RSVP needed. Anyone on the waitlist is moved off it. People already on the list aren&apos;t shown.
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-body text-xs font-medium text-espresso">
+                        {addSelectedIds.size > 0 ? `${addSelectedIds.size} selected` : "No one selected"}
+                      </p>
+                      {addSelectedIds.size > 0 && (
+                        <button type="button" onClick={() => setAddSelectedIds(new Set())} className="font-body text-xs text-tan hover:underline">
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search members by name or @handle…"
+                      value={addSearch}
+                      onChange={(e) => setAddSearch(e.target.value)}
+                      className="w-full bg-ivory border border-tan/20 rounded px-3 py-2 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust"
+                    />
+                    <div className="max-h-56 overflow-y-auto border border-tan/20 rounded divide-y divide-tan/10">
+                      {filteredAddCandidates.length === 0 ? (
+                        <p className="font-body text-xs text-tan italic px-3 py-4 text-center">{addQuery ? "No matches." : "Every member is already on the list."}</p>
+                      ) : (
+                        filteredAddCandidates.map((c) => (
+                          <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-ivory/60 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={addSelectedIds.has(c.id)}
+                              onChange={() => toggleAddSelect(c.id)}
+                              className="w-4 h-4 accent-rust shrink-0"
+                            />
+                            <span className="font-body text-sm text-espresso flex-1 truncate">
+                              {c.name}
+                              {c.ig_handle && <span className="text-tan text-xs"> · @{c.ig_handle.replace(/^@/, "")}</span>}
+                            </span>
+                            {c.waitlisted && (
+                              <span className="font-body text-[10px] uppercase tracking-wide text-amber shrink-0">Waitlist</span>
+                            )}
+                            {!c.textable && (
+                              <span className="font-body text-[10px] uppercase tracking-wide text-tan/60 shrink-0">No texts</span>
+                            )}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-tan/15 pt-4 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={addNotify}
+                        onChange={(e) => setAddNotify(e.target.checked)}
+                        className="w-4 h-4 accent-rust shrink-0"
+                      />
+                      <span className="font-body text-sm text-espresso">Text them that they&apos;ve been added</span>
+                    </label>
+                    {addNotify && (
+                      <div className="space-y-1">
+                        <p className="font-body text-xs text-tan">
+                          Use{" "}
+                          <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{name}"}</span>,{" "}
+                          <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{event}"}</span>, and{" "}
+                          <span className="font-mono bg-tan/10 px-1 rounded text-espresso">{"{date}"}</span> to personalize it.
+                        </p>
+                        <textarea
+                          value={addMessage}
+                          onChange={(e) => setAddMessage(e.target.value)}
+                          rows={3}
+                          className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
+                        />
+                        <div className="flex items-center justify-between font-body text-xs text-tan">
+                          <span>{addMessage.length} characters · {addSegments} {addSegments === 1 ? "segment" : "segments"}</span>
+                          {addCost !== null && (
+                            <span>Est. cost: <strong className="text-espresso">${addCost}</strong> + carrier fees</span>
+                          )}
+                        </div>
+                        {!isGsm7Compatible(addMessage) && (
+                          <p className="font-body text-[11px] text-amber leading-relaxed">
+                            Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={saveAddMessageDefault}
+                          disabled={addMessageSaving || !addMessage.trim()}
+                          className="font-body text-xs text-rust hover:underline disabled:opacity-40"
+                        >
+                          {addMessageSaving ? "Saving…" : addMessageSaved ? "Saved as default ✓" : "Save as default"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {addOverCapacity && addSelectedIds.size > 0 && (
+                    <p className="font-body text-[11px] text-amber leading-relaxed">
+                      This puts the list at {totalAttending + addSelectedIds.size} / {event.capacity} — over capacity. You can still add them.
+                    </p>
+                  )}
+
+                  {addResult && (
+                    <div className={`rounded-lg px-4 py-3 font-body text-sm ${
+                      addResult.error ? "bg-red-50 border border-red-200 text-red-800" :
+                      addResult.connectionLost || addResult.failures.length > 0 ? "bg-amber-50 border border-amber-200 text-amber-800" :
+                      "bg-green-50 border border-green-200 text-green-800"
+                    }`}>
+                      {addResult.error ? (
+                        <p>{addResult.error}</p>
+                      ) : addResult.connectionLost ? (
+                        <p>Lost connection while waiting on a response — it likely finished on the server. The guest list has been refreshed; check it before trying again.</p>
+                      ) : (
+                        <>
+                          <p>
+                            Added {addResult.added} to the list{addResult.notified ? ` · texted ${addResult.texted}` : ""}.
+                          </p>
+                          {addResult.notTextable.length > 0 && (
+                            <p className="mt-1">Added but not texted (no phone or opted out): {addResult.notTextable.join(", ")}</p>
+                          )}
+                          {addResult.failures.length > 0 && <p className="mt-1">Text failed: {addResult.failures.join(", ")}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={addToList}
+                    disabled={addSelectedIds.size === 0 || adding || (addNotify && !addMessage.trim())}
+                    className="font-body text-sm font-medium px-6 py-3 bg-espresso text-ivory rounded hover:bg-rust transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {adding
+                      ? "Adding…"
+                      : addSelectedIds.size > 0
+                      ? `Add ${addSelectedIds.size} to “${event.title}” List`
+                      : `Add to “${event.title}” List`}
+                  </button>
+                </>
+              )}
+            </div>
 
             {/* Send RSVP blast */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">
@@ -998,5 +1243,7 @@ export default function EventDetailPage() {
     </div>
   );
 }
+
+type AddResult = { added: number; texted: number; failures: string[]; notTextable: string[]; notified: boolean; connectionLost?: boolean; error?: string };
 
 type BlastResult = { sent: number; failures: string[]; connectionLost?: boolean; error?: string; test?: boolean };

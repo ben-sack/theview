@@ -88,6 +88,31 @@ export async function GET(
     rsvped: rsvpedIds.has(c.id),
   }));
 
+  // Every approved member, for "Add to List" — unlike inviteCandidates this
+  // includes people without a phone / opted out, since adding someone to
+  // the list doesn't require texting them.
+  const { data: members, error: membersError } = await supabase
+    .from("contacts")
+    .select("id, name, ig_handle, phone, sms_opted_out")
+    .eq("status", "approved")
+    .order("name", { ascending: true })
+    .range(0, 9999);
+
+  if (membersError) {
+    return NextResponse.json({ error: membersError.message }, { status: 500 });
+  }
+
+  const waitlistedIds = new Set((waitlist ?? []).map((w) => w.contact_id));
+  const addCandidates = (members ?? [])
+    .filter((m) => !rsvpedIds.has(m.id))
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      ig_handle: m.ig_handle,
+      textable: !!m.phone && !m.sms_opted_out,
+      waitlisted: waitlistedIds.has(m.id),
+    }));
+
   const genderBreakdown = { male: 0, female: 0, unsure: 0 };
   for (const r of rsvps ?? []) {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -96,7 +121,7 @@ export async function GET(
     genderBreakdown[gender]++;
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, genderBreakdown, textBlastSentIds });
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, addCandidates, genderBreakdown, textBlastSentIds });
 }
 
 export async function PATCH(
