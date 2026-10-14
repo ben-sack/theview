@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
@@ -69,6 +69,31 @@ export function EventSignupContent({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  const [inviteSmsHref, setInviteSmsHref] = useState<string | null>(null);
+  const [optIn, setOptIn] = useState<{ contactId: string; token: string } | null>(null);
+  const [optingIn, setOptingIn] = useState(false);
+  const [optInError, setOptInError] = useState("");
+
+  // A friend's invite link (?ref=<contact id>) pre-fills "Referred by",
+  // same as the homepage access form.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (!ref) return;
+    fetch(`/api/referrer?id=${ref}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.name) setForm((prev) => (prev.referred_by ? prev : { ...prev, referred_by: d.name }));
+      })
+      .catch(() => {});
+  }, []);
+
+  // Like the RSVP page's "Invite a Friend", but invites to this event and
+  // links to its page so friends can sign up for it directly.
+  function prepareInvite(contactId: string) {
+    const link = `${window.location.origin}/e/${slug}?ref=${contactId}`;
+    const message = `You've been referred to attend ${event.title}, apply here: ${link}`;
+    setInviteSmsHref(`sms:?&body=${encodeURIComponent(message)}`);
+  }
 
   const start = new Date(event.date);
   const dateLabel = formatEventDateShort(start);
@@ -96,6 +121,8 @@ export function EventSignupContent({
         return;
       }
       setResult(data.result);
+      if (data.contact_id) prepareInvite(data.contact_id);
+      if (data.contact_id && data.opt_in_token) setOptIn({ contactId: data.contact_id, token: data.opt_in_token });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
       setError("Something went wrong. Please try again.");
@@ -125,6 +152,30 @@ export function EventSignupContent({
       return;
     }
     await submitForm();
+  }
+
+  async function optInToTexts() {
+    if (!optIn) return;
+    setOptingIn(true);
+    setOptInError("");
+    try {
+      const res = await fetch(`/api/event-signup/${slug}/opt-in`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_id: optIn.contactId, token: optIn.token }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOptInError(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+      setOptIn(null);
+      setSmsChoice("yes");
+    } catch {
+      setOptInError("Something went wrong. Please try again.");
+    } finally {
+      setOptingIn(false);
+    }
   }
 
   function googleCalendarLink() {
@@ -206,6 +257,11 @@ export function EventSignupContent({
                 eventTitle={event.title}
                 textsOn={smsChoice === "yes"}
                 calendarLink={googleCalendarLink()}
+                inviteSmsHref={inviteSmsHref}
+                needsOptIn={!!optIn}
+                optingIn={optingIn}
+                optInError={optInError}
+                onOptIn={optInToTexts}
               />
             ) : (
               <>
@@ -393,19 +449,29 @@ function ResultMessage({
   eventTitle,
   textsOn,
   calendarLink,
+  inviteSmsHref,
+  needsOptIn,
+  optingIn,
+  optInError,
+  onOptIn,
 }: {
   result: Result;
   eventTitle: string;
   textsOn: boolean;
   calendarLink: string;
+  inviteSmsHref: string | null;
+  needsOptIn: boolean;
+  optingIn: boolean;
+  optInError: string;
+  onOptIn: () => void;
 }) {
   const copy: Record<Result, { eyebrow: string; title: string; body: string }> = {
     pending: {
       eyebrow: "Request received",
       title: "You're in review.",
       body: textsOn
-        ? `We approve every guest personally. Once you're approved, you'll be added to the ${eventTitle} list and we'll text you to confirm.`
-        : `We approve every guest personally. Once you're approved, you'll be added to the ${eventTitle} list.`,
+        ? "Once you're approved, you'll be added to the list and receive a confirmation via text."
+        : "Once you're approved, you'll be added to the list.",
     },
     on_list: {
       eyebrow: "You're in",
@@ -423,7 +489,13 @@ function ResultMessage({
       body: `${eventTitle} is at capacity right now. We'll text you if a spot opens up.`,
     },
   };
-  const c = copy[result];
+  const c = needsOptIn && result === "pending"
+    ? {
+        eyebrow: "Request received",
+        title: "One more thing.",
+        body: "Since you didn't opt into texts, we won't be able to admit you — texts are how we confirm your spot and send event details. If you'd like to opt in, tap below.",
+      }
+    : copy[result];
   const showCalendar = result === "on_list" || result === "already_on_list";
 
   return (
@@ -431,6 +503,25 @@ function ResultMessage({
       <p className="font-body text-[10px] tracking-[0.4em] uppercase text-tan/60">{c.eyebrow}</p>
       <h1 className="font-display text-5xl md:text-6xl text-ivory font-light leading-[1.05]">{c.title}</h1>
       <p className="font-display italic text-xl text-cream/55 font-light leading-relaxed">{c.body}</p>
+      {needsOptIn && result === "pending" && (
+        <div className="space-y-3 max-w-sm">
+          <button
+            type="button"
+            onClick={onOptIn}
+            disabled={optingIn}
+            className="w-full bg-ivory text-espresso font-body text-sm font-medium tracking-[0.2em] uppercase py-4 rounded hover:bg-cream transition-colors duration-200 disabled:opacity-50"
+          >
+            {optingIn ? "Updating…" : "Yes, text me"}
+          </button>
+          {optInError && <p className="font-body text-[10px] tracking-[0.2em] text-rust">{optInError}</p>}
+          <p className="font-body text-[10px] tracking-[0.15em] text-cream/55 leading-relaxed">
+            Message and data rates may apply. Reply STOP to any text to opt out at any time. See our{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-cream/70 transition-colors">
+              Privacy Policy
+            </a>.
+          </p>
+        </div>
+      )}
       {showCalendar && (
         <a
           href={calendarLink}
@@ -440,6 +531,19 @@ function ResultMessage({
         >
           Add to Google Calendar
         </a>
+      )}
+      {inviteSmsHref && (
+        <div className="border-t border-rust/15 pt-6 mt-4 space-y-3 max-w-sm">
+          <p className="font-body text-xs text-tan/50 leading-relaxed">
+            Know someone who should be here? Invite them — we&apos;ll take note of your referral!
+          </p>
+          <a
+            href={inviteSmsHref}
+            className="block w-full text-center border border-tan/25 text-tan/60 hover:text-cream/70 hover:border-tan/40 font-body text-xs tracking-widest uppercase py-3 rounded transition-colors duration-200"
+          >
+            Invite a Friend
+          </a>
+        </div>
       )}
     </div>
   );

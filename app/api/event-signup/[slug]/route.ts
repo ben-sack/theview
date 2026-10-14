@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 import { eventHasEnded } from "@/lib/eventSignup";
 import { getSignupEvent } from "@/lib/eventSignup-server";
+import { createOptInToken } from "@/lib/optInToken";
 
 export async function GET(
   _req: NextRequest,
@@ -78,7 +79,7 @@ export async function POST(
       .eq("event_id", event.id)
       .eq("contact_id", existing.id)
       .maybeSingle();
-    if (onList) return NextResponse.json({ result: "already_on_list" });
+    if (onList) return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
 
     const { count } = await supabase
       .from("rsvps")
@@ -90,17 +91,20 @@ export async function POST(
         .from("waitlist")
         .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
       if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
-      return NextResponse.json({ result: "waitlisted" });
+      return NextResponse.json({ result: "waitlisted", contact_id: existing.id });
     }
 
     const { error } = await supabase
       .from("rsvps")
       .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
     if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
-    return NextResponse.json({ result: "on_list" });
+    return NextResponse.json({ result: "on_list", contact_id: existing.id });
   }
 
   let contactId: string;
+  // Whether they end up unable to receive texts because they declined on a
+  // form (not a STOP reply) — those people get a chance to opt in after.
+  let declinedTexts: boolean;
   const wasRejected = existing?.status === "rejected";
 
   if (existing) {
@@ -113,6 +117,7 @@ export async function POST(
       update.sms_opted_out = false;
       update.sms_opt_out_source = null;
     }
+    declinedTexts = existing.sms_opted_out && existing.sms_opt_out_source === "signup" && update.sms_opted_out !== false;
     if (Object.keys(update).length > 0) {
       const { error } = await supabase.from("contacts").update(update).eq("id", contactId);
       if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
@@ -137,6 +142,7 @@ export async function POST(
       return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
     }
     contactId = data.id;
+    declinedTexts = !sms_opt_in;
   }
 
   const { error: signupError } = await supabase
@@ -151,5 +157,9 @@ export async function POST(
     return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
   }
 
-  return NextResponse.json({ result: "pending" });
+  return NextResponse.json({
+    result: "pending",
+    contact_id: contactId,
+    ...(declinedTexts ? { opt_in_token: createOptInToken(contactId) } : {}),
+  });
 }
