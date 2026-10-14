@@ -4,6 +4,7 @@ import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 import { eventHasEnded } from "@/lib/eventSignup";
 import { getSignupEvent } from "@/lib/eventSignup-server";
 import { createOptInToken } from "@/lib/optInToken";
+import { recordLinkEvent } from "@/lib/signupLinkStats";
 
 export async function GET(
   _req: NextRequest,
@@ -34,7 +35,7 @@ export async function POST(
 ) {
   const { slug } = await params;
   const body = await req.json().catch(() => ({}));
-  const { first_name, last_name, email, phone, ig_handle, referred_by, sms_opt_in } = body;
+  const { first_name, last_name, email, phone, ig_handle, referred_by, sms_opt_in, source } = body;
 
   if (!first_name?.trim() || !last_name?.trim() || !email?.trim() || !phone || !ig_handle?.trim()) {
     return NextResponse.json({ error: "Please fill out all required fields." }, { status: 400 });
@@ -79,7 +80,10 @@ export async function POST(
       .eq("event_id", event.id)
       .eq("contact_id", existing.id)
       .maybeSingle();
-    if (onList) return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
+    if (onList) {
+      await recordLinkEvent(event.id, source, "submit");
+      return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
+    }
 
     const { count } = await supabase
       .from("rsvps")
@@ -91,6 +95,7 @@ export async function POST(
         .from("waitlist")
         .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
       if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
+      await recordLinkEvent(event.id, source, "submit");
       return NextResponse.json({ result: "waitlisted", contact_id: existing.id });
     }
 
@@ -98,6 +103,7 @@ export async function POST(
       .from("rsvps")
       .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
     if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
+    await recordLinkEvent(event.id, source, "submit");
     return NextResponse.json({ result: "on_list", contact_id: existing.id });
   }
 
@@ -157,6 +163,7 @@ export async function POST(
     return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
   }
 
+  await recordLinkEvent(event.id, source, "submit");
   return NextResponse.json({
     result: "pending",
     contact_id: contactId,

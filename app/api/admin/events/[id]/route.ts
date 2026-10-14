@@ -124,6 +124,20 @@ export async function GET(
     .map((s) => ({ ...s, contacts: Array.isArray(s.contacts) ? s.contacts[0] : s.contacts }))
     .filter((s) => s.contacts?.status === "pending");
 
+  // Visits/submissions on the public signup page, per link (TikTok bio etc).
+  // Tolerates the table not existing yet.
+  const { data: linkEvents } = await supabase
+    .from("signup_link_events")
+    .select("source, kind")
+    .eq("event_id", id)
+    .range(0, 99999);
+  const linkStats: Record<string, { visits: number; submits: number }> = {};
+  for (const e of linkEvents ?? []) {
+    const s = (linkStats[e.source] ??= { visits: 0, submits: 0 });
+    if (e.kind === "visit") s.visits++;
+    else if (e.kind === "submit") s.submits++;
+  }
+
   const genderBreakdown = { male: 0, female: 0, unsure: 0 };
   for (const r of rsvps ?? []) {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -132,7 +146,7 @@ export async function GET(
     genderBreakdown[gender]++;
   }
 
-  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, addCandidates, pendingSignups, genderBreakdown, textBlastSentIds });
+  return NextResponse.json({ event, rsvps: rsvps ?? [], waitlist: waitlist ?? [], inviteCandidates, addCandidates, pendingSignups, linkStats, genderBreakdown, textBlastSentIds });
 }
 
 export async function PATCH(

@@ -139,6 +139,8 @@ export default function EventDetailPage() {
   const [signupApprovedSaving, setSignupApprovedSaving] = useState(false);
   const [signupApprovedSaved, setSignupApprovedSaved] = useState(false);
   const [pendingSignups, setPendingSignups] = useState<PendingSignup[]>([]);
+  const [linkStats, setLinkStats] = useState<Record<string, { visits: number; submits: number }>>({});
+  const [sourceCopied, setSourceCopied] = useState<string | null>(null);
   const [panelSearch, setPanelSearch] = useState("");
   const [panelSort, setPanelSort] = useState<"date" | "alpha">("date");
 
@@ -158,6 +160,7 @@ export default function EventDetailPage() {
       setInviteCandidates(d.inviteCandidates ?? []);
       setAddCandidates(d.addCandidates ?? []);
       setPendingSignups(d.pendingSignups ?? []);
+      setLinkStats(d.linkStats ?? {});
       setGenderBreakdown(d.genderBreakdown ?? null);
       setTextBlastSentIds(new Set(d.textBlastSentIds ?? []));
       if (isInitial) {
@@ -901,6 +904,44 @@ export default function EventDetailPage() {
                       </a>
                     </div>
                     <p className="font-body text-[11px] text-tan">Preview works even while the page is off — only you can find it until it&apos;s live. Save after changing the link name.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-body text-xs font-medium text-espresso">Visits &amp; submissions</p>
+                    <div className="border border-tan/20 rounded divide-y divide-tan/10">
+                      {[
+                        { key: "tiktok", label: "TikTok link", ref: "tiktok" },
+                        { key: "instagram", label: "Instagram link", ref: "instagram" },
+                        { key: "friend", label: "Friend invites" },
+                        { key: "direct", label: "Plain link / other" },
+                      ].map((row) => {
+                        const stat = linkStats[row.key] ?? { visits: 0, submits: 0 };
+                        return (
+                          <div key={row.key} className="px-3 py-2 flex items-center justify-between gap-3 font-body text-sm">
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="text-espresso truncate">{row.label}</span>
+                              {row.ref && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`https://theview.la/e/${signupSlug}?ref=${row.ref}`);
+                                    setSourceCopied(row.key);
+                                    setTimeout(() => setSourceCopied(null), 2000);
+                                  }}
+                                  className="font-body text-[11px] text-rust hover:underline shrink-0"
+                                >
+                                  {sourceCopied === row.key ? "Copied ✓" : "Copy link"}
+                                </button>
+                              )}
+                            </span>
+                            <span className="text-tan text-xs shrink-0">
+                              {stat.visits} {stat.visits === 1 ? "visit" : "visits"} · {stat.submits} submitted
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="font-body text-[11px] text-tan">Counts start once the page is live. Refreshing the page doesn&apos;t count as a new visit.</p>
                   </div>
 
                   <div className="space-y-2">

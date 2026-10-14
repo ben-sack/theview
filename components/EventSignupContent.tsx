@@ -29,6 +29,19 @@ type Result = "pending" | "on_list" | "already_on_list" | "waitlisted";
 
 // Scattered four-point stars, echoing the sparkles on the flyers. On phones
 // the text runs edge to edge, so only the ones up by the flyer show there.
+// ?ref=<key> links for social bios — fills "Referred by" with the value.
+const SOCIAL_REFS: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+};
+
+// Which link someone arrived on, for the admin's visit/submission counts.
+function linkSource(ref: string | null): string {
+  if (!ref) return "direct";
+  if (SOCIAL_REFS[ref.toLowerCase()]) return ref.toLowerCase();
+  return "friend";
+}
+
 const STARS = [
   { top: "8%", left: "6%", size: 14, delay: "0s", mobile: true },
   { top: "18%", left: "88%", size: 10, delay: "1.2s", mobile: true },
@@ -73,12 +86,37 @@ export function EventSignupContent({
   const [optIn, setOptIn] = useState<{ contactId: string; token: string } | null>(null);
   const [optingIn, setOptingIn] = useState(false);
   const [optInError, setOptInError] = useState("");
+  const [source, setSource] = useState("direct");
+
+  // Counts one visit per browser tab session (refreshes don't recount).
+  // Admin previews of a page that's off aren't counted.
+  useEffect(() => {
+    if (status !== "open") return;
+    const src = linkSource(new URLSearchParams(window.location.search).get("ref"));
+    const key = `visit:${slug}:${src}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {}
+    fetch(`/api/event-signup/${slug}/visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: src }),
+    }).catch(() => {});
+  }, [slug, status]);
 
   // A friend's invite link (?ref=<contact id>) pre-fills "Referred by",
-  // same as the homepage access form.
+  // same as the homepage access form. A social bio link (?ref=tiktok)
+  // pre-fills the platform name instead.
   useEffect(() => {
     const ref = new URLSearchParams(window.location.search).get("ref");
     if (!ref) return;
+    setSource(linkSource(ref));
+    const source = SOCIAL_REFS[ref.toLowerCase()];
+    if (source) {
+      setForm((prev) => (prev.referred_by ? prev : { ...prev, referred_by: source }));
+      return;
+    }
     fetch(`/api/referrer?id=${ref}`)
       .then((r) => r.json())
       .then((d) => {
@@ -113,7 +151,7 @@ export function EventSignupContent({
       const res = await fetch(`/api/event-signup/${slug}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, sms_opt_in: smsChoice === "yes" }),
+        body: JSON.stringify({ ...form, sms_opt_in: smsChoice === "yes", source }),
       });
       const data = await res.json();
       if (!res.ok) {
