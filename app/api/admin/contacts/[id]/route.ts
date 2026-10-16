@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import twilio from "twilio";
-import { DEFAULT_SIGNUP_APPROVED_TEMPLATE, eventHasEnded, fillSignupApprovedTemplate } from "@/lib/eventSignup";
+import { DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE, eventHasEnded, fillSignupApprovedTemplate } from "@/lib/eventSignup";
 
 function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
 }
 
-type SignupEvent = { id: string; title: string; date: string; end_time: string | null };
+type SignupEvent = { id: string; title: string; date: string; end_time: string | null; capacity: number };
+type AddedEvent = SignupEvent & { waitlisted: boolean };
 
 // Puts a newly approved contact onto the guest list of every still-upcoming
-// event they signed up for through a public event page, then clears those
-// signups. Returns the events they were added to, soonest first.
-async function addToSignupEvents(contactId: string): Promise<SignupEvent[]> {
+// event they signed up for through a public event page — or its waitlist if
+// that event is already full — then clears those signups. Returns the
+// events they were added to, soonest first.
+async function addToSignupEvents(contactId: string): Promise<AddedEvent[]> {
   const { data: signups, error } = await supabase
     .from("event_signups")
-    .select("event_id, events(id, title, date, end_time)")
+    .select("event_id, events(id, title, date, end_time, capacity)")
     .eq("contact_id", contactId);
 
   if (error) {
@@ -28,8 +30,33 @@ async function addToSignupEvents(contactId: string): Promise<SignupEvent[]> {
     .filter((e): e is SignupEvent => !!e && !eventHasEnded(e))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const added: SignupEvent[] = [];
+  const added: AddedEvent[] = [];
   for (const event of events) {
+    // Same capacity check as the RSVP link and the signup form.
+    const { data: onList } = await supabase
+      .from("rsvps")
+      .select("id")
+      .eq("event_id", event.id)
+      .eq("contact_id", contactId)
+      .maybeSingle();
+    const { count } = await supabase
+      .from("rsvps")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", event.id);
+    const full = !onList && (count ?? 0) >= event.capacity;
+
+    if (full) {
+      const { error: wlError } = await supabase
+        .from("waitlist")
+        .upsert({ event_id: event.id, contact_id: contactId, party_size: 1 }, { onConflict: "event_id,contact_id" });
+      if (wlError) {
+        console.error("Failed to waitlist approved signup:", wlError.message);
+        continue;
+      }
+      added.push({ ...event, waitlisted: true });
+      continue;
+    }
+
     const { error: rsvpError } = await supabase
       .from("rsvps")
       .upsert({ event_id: event.id, contact_id: contactId, party_size: 1 }, { onConflict: "event_id,contact_id" });
@@ -38,24 +65,31 @@ async function addToSignupEvents(contactId: string): Promise<SignupEvent[]> {
       continue;
     }
     await supabase.from("waitlist").delete().eq("event_id", event.id).eq("contact_id", contactId);
-    added.push(event);
+    added.push({ ...event, waitlisted: false });
   }
 
   await supabase.from("event_signups").delete().eq("contact_id", contactId);
   return added;
 }
 
-async function sendApprovalSms(contactId: string, phone: string, name: string, listEvent?: SignupEvent) {
+async function sendApprovalSms(contactId: string, phone: string, name: string, listEvent?: AddedEvent) {
   // Someone approved off an event signup page gets one combined
-  // "welcome + you're on the list" text instead of the plain welcome.
-  const key = listEvent ? "signup_approved_sms_template" : "sms_template";
+  // "welcome + you're on the list" (or "…on the waitlist") text instead of
+  // the plain welcome.
+  const key = !listEvent
+    ? "sms_template"
+    : listEvent.waitlisted
+      ? "signup_waitlisted_sms_template"
+      : "signup_approved_sms_template";
   const { data } = await supabase
     .from("settings")
     .select("value")
     .eq("key", key)
     .maybeSingle();
 
-  const template = data?.value || (listEvent ? DEFAULT_SIGNUP_APPROVED_TEMPLATE : null);
+  const template =
+    data?.value ||
+    (!listEvent ? null : listEvent.waitlisted ? DEFAULT_SIGNUP_WAITLISTED_TEMPLATE : DEFAULT_SIGNUP_APPROVED_TEMPLATE);
   if (!template) return;
 
   const body = listEvent

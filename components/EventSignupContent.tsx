@@ -87,6 +87,7 @@ export function EventSignupContent({
   const [optingIn, setOptingIn] = useState(false);
   const [optInError, setOptInError] = useState("");
   const [source, setSource] = useState("direct");
+  const [textsBlocked, setTextsBlocked] = useState(false);
 
   // Counts one visit per browser tab session (refreshes don't recount).
   // Admin previews of a page that's off aren't counted.
@@ -160,6 +161,7 @@ export function EventSignupContent({
       }
       setResult(data.result);
       if (data.contact_id) prepareInvite(data.contact_id);
+      setTextsBlocked(!!data.texts_blocked);
       if (data.contact_id && data.opt_in_token) setOptIn({ contactId: data.contact_id, token: data.opt_in_token });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
@@ -297,6 +299,7 @@ export function EventSignupContent({
                 calendarLink={googleCalendarLink()}
                 inviteSmsHref={inviteSmsHref}
                 needsOptIn={!!optIn}
+                textsBlocked={textsBlocked}
                 optingIn={optingIn}
                 optInError={optInError}
                 onOptIn={optInToTexts}
@@ -489,6 +492,7 @@ function ResultMessage({
   calendarLink,
   inviteSmsHref,
   needsOptIn,
+  textsBlocked,
   optingIn,
   optInError,
   onOptIn,
@@ -499,6 +503,7 @@ function ResultMessage({
   calendarLink: string;
   inviteSmsHref: string | null;
   needsOptIn: boolean;
+  textsBlocked: boolean;
   optingIn: boolean;
   optInError: string;
   onOptIn: () => void;
@@ -508,8 +513,8 @@ function ResultMessage({
       eyebrow: "Request received",
       title: "You're in review.",
       body: textsOn
-        ? "Once you're approved, you'll be added to the list and receive a confirmation via text."
-        : "Once you're approved, you'll be added to the list.",
+        ? "Once you're approved, we'll text you to confirm your spot."
+        : "Once you're approved, we'll confirm your spot.",
     },
     on_list: {
       eyebrow: "You're in",
@@ -527,7 +532,19 @@ function ResultMessage({
       body: `${eventTitle} is at capacity right now. We'll text you if a spot opens up.`,
     },
   };
-  const c = needsOptIn && result === "pending"
+  const c = textsBlocked && result === "pending"
+    ? {
+        eyebrow: "Request received",
+        title: "One more thing.",
+        body: "You've opted out of our texts, so we won't be able to admit you — texts are how we confirm your spot and send event details. To opt back in, text START to (866) 450-0632.",
+      }
+    : textsBlocked
+    ? {
+        eyebrow: copy[result].eyebrow,
+        title: copy[result].title,
+        body: "One more thing: you've opted out of our texts, so we won't be able to admit you — texts are how we confirm your spot and send event details. To opt back in, text START to (866) 450-0632.",
+      }
+    : needsOptIn && result === "pending"
     ? {
         eyebrow: "Request received",
         title: "One more thing.",
@@ -541,6 +558,14 @@ function ResultMessage({
       <p className="font-body text-[10px] tracking-[0.4em] uppercase text-tan/60">{c.eyebrow}</p>
       <h1 className="font-display text-5xl md:text-6xl text-ivory font-light leading-[1.05]">{c.title}</h1>
       <p className="font-display italic text-xl text-cream/55 font-light leading-relaxed">{c.body}</p>
+      {textsBlocked && (
+        <a
+          href="sms:+18664500632?&body=START"
+          className="block max-w-sm text-center bg-ivory text-espresso font-body text-sm font-medium tracking-[0.2em] uppercase py-4 rounded hover:bg-cream transition-colors duration-200"
+        >
+          Text START
+        </a>
+      )}
       {needsOptIn && result === "pending" && (
         <div className="space-y-3 max-w-sm">
           <button

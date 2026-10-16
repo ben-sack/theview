@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 import { resizeImage } from "@/lib/resizeImage";
-import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE } from "@/lib/eventSignup";
+import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE } from "@/lib/eventSignup";
 import { BlastPhotoPicker, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Event = {
@@ -138,6 +138,9 @@ export default function EventDetailPage() {
   const [signupApprovedMessage, setSignupApprovedMessage] = useState("");
   const [signupApprovedSaving, setSignupApprovedSaving] = useState(false);
   const [signupApprovedSaved, setSignupApprovedSaved] = useState(false);
+  const [signupWaitlistedMessage, setSignupWaitlistedMessage] = useState("");
+  const [signupWaitlistedSaving, setSignupWaitlistedSaving] = useState(false);
+  const [signupWaitlistedSaved, setSignupWaitlistedSaved] = useState(false);
   const [pendingSignups, setPendingSignups] = useState<PendingSignup[]>([]);
   const [linkStats, setLinkStats] = useState<Record<string, { visits: number; submits: number }>>({});
   const [sourceCopied, setSourceCopied] = useState<string | null>(null);
@@ -170,6 +173,7 @@ export default function EventDetailPage() {
         );
         setAddMessage(settings?.list_add_sms_template || DEFAULT_LIST_ADD_TEMPLATE);
         setSignupApprovedMessage(settings?.signup_approved_sms_template || DEFAULT_SIGNUP_APPROVED_TEMPLATE);
+        setSignupWaitlistedMessage(settings?.signup_waitlisted_sms_template || DEFAULT_SIGNUP_WAITLISTED_TEMPLATE);
         setSignupEnabled(!!d.event.signup_enabled);
         setSignupSlug(d.event.signup_slug || slugify(d.event.title));
         setSignupFlyer(d.event.signup_flyer_url || "");
@@ -442,6 +446,18 @@ export default function EventDetailPage() {
     setSignupApprovedSaving(false);
     setSignupApprovedSaved(true);
     setTimeout(() => setSignupApprovedSaved(false), 3000);
+  }
+
+  async function saveSignupWaitlistedDefault() {
+    setSignupWaitlistedSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "signup_waitlisted_sms_template", value: signupWaitlistedMessage }),
+    });
+    setSignupWaitlistedSaving(false);
+    setSignupWaitlistedSaved(true);
+    setTimeout(() => setSignupWaitlistedSaved(false), 3000);
   }
 
   function signupUrl() {
@@ -881,7 +897,7 @@ export default function EventDetailPage() {
               {signupOpen && (
                 <>
                   <p className="font-body text-xs text-tan -mt-2">
-                    A shareable page anyone can use to ask to get on this event&apos;s list. New people land in Pending — approving them adds them to this list automatically. Existing members go straight onto the list, and rejected people go back to Pending for another look.
+                    A shareable page anyone can use to ask to get on this event&apos;s list. New people land in Pending — approving them adds them to this list automatically (or the waitlist, if it’s full). Existing members go straight onto the list (or waitlist), and rejected people go back to Pending for another look.
                   </p>
 
                   <div className="space-y-1">
@@ -1034,6 +1050,30 @@ export default function EventDetailPage() {
                         className="text-rust hover:underline disabled:opacity-40"
                       >
                         {signupApprovedSaving ? "Saving…" : signupApprovedSaved ? "Saved ✓" : "Save approval text"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-tan/15 pt-4 space-y-1">
+                    <p className="font-body text-xs font-medium text-espresso">Approval text — event full</p>
+                    <p className="font-body text-xs text-tan">
+                      Sent instead when the event is already at capacity when you approve them — they go onto the waitlist, and get the usual &ldquo;spot opened up&rdquo; text if you move them onto the list. Same placeholders. Shared by all events.
+                    </p>
+                    <textarea
+                      value={signupWaitlistedMessage}
+                      onChange={(e) => setSignupWaitlistedMessage(e.target.value)}
+                      rows={4}
+                      className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black focus:outline-none focus:border-rust resize-none leading-relaxed"
+                    />
+                    <div className="flex items-center justify-between font-body text-xs text-tan">
+                      <span>{signupWaitlistedMessage.length} characters · {getSegmentCount(signupWaitlistedMessage)} segments</span>
+                      <button
+                        type="button"
+                        onClick={saveSignupWaitlistedDefault}
+                        disabled={signupWaitlistedSaving || !signupWaitlistedMessage.trim()}
+                        className="text-rust hover:underline disabled:opacity-40"
+                      >
+                        {signupWaitlistedSaving ? "Saving…" : signupWaitlistedSaved ? "Saved ✓" : "Save waitlist text"}
                       </button>
                     </div>
                   </div>

@@ -74,6 +74,13 @@ export async function POST(
   const existing = byPhone ?? byEmail;
 
   if (existing?.status === "approved") {
+    // Same opt-in handling as below: a fresh "Yes, text me" undoes an earlier
+    // form decline; a STOP reply can only be undone by them texting START.
+    if (sms_opt_in && existing.sms_opted_out && existing.sms_opt_out_source === "signup") {
+      await supabase.from("contacts").update({ sms_opted_out: false, sms_opt_out_source: null }).eq("id", existing.id);
+    }
+    const blocked = existing.sms_opted_out && existing.sms_opt_out_source !== "signup" ? { texts_blocked: true } : {};
+
     const { data: onList } = await supabase
       .from("rsvps")
       .select("id")
@@ -82,7 +89,7 @@ export async function POST(
       .maybeSingle();
     if (onList) {
       await recordLinkEvent(event.id, source, "submit");
-      return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
+      return NextResponse.json({ result: "already_on_list", contact_id: existing.id, ...blocked });
     }
 
     const { count } = await supabase
@@ -96,7 +103,7 @@ export async function POST(
         .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
       if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
       await recordLinkEvent(event.id, source, "submit");
-      return NextResponse.json({ result: "waitlisted", contact_id: existing.id });
+      return NextResponse.json({ result: "waitlisted", contact_id: existing.id, ...blocked });
     }
 
     const { error } = await supabase
@@ -104,13 +111,16 @@ export async function POST(
       .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
     if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
     await recordLinkEvent(event.id, source, "submit");
-    return NextResponse.json({ result: "on_list", contact_id: existing.id });
+    return NextResponse.json({ result: "on_list", contact_id: existing.id, ...blocked });
   }
 
   let contactId: string;
   // Whether they end up unable to receive texts because they declined on a
   // form (not a STOP reply) — those people get a chance to opt in after.
   let declinedTexts: boolean;
+  // Opted out by a STOP reply (or a carrier block) — only they can undo
+  // that, by texting START, so they're told how instead.
+  let textsBlocked = false;
   const wasRejected = existing?.status === "rejected";
 
   if (existing) {
@@ -124,6 +134,7 @@ export async function POST(
       update.sms_opt_out_source = null;
     }
     declinedTexts = existing.sms_opted_out && existing.sms_opt_out_source === "signup" && update.sms_opted_out !== false;
+    textsBlocked = existing.sms_opted_out && existing.sms_opt_out_source !== "signup";
     if (Object.keys(update).length > 0) {
       const { error } = await supabase.from("contacts").update(update).eq("id", contactId);
       if (error) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
@@ -168,5 +179,6 @@ export async function POST(
     result: "pending",
     contact_id: contactId,
     ...(declinedTexts ? { opt_in_token: createOptInToken(contactId) } : {}),
+    ...(textsBlocked ? { texts_blocked: true } : {}),
   });
 }
