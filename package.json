@@ -10,11 +10,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
+    "@types/qrcode": "^1.5.6",
     "jszip": "^3.10.1",
     "next": "^15.3.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.35.3",
+    "stripe": "^23.1.0",
     "twilio": "^6.0.2"
   },
   "devDependencies": {

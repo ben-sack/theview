@@ -2081,6 +2081,9 @@ function SettingsTab() {
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteSaved, setInviteSaved] = useState(false);
 
+  const [ticketingEnabled, setTicketingEnabled] = useState<boolean | null>(null);
+  const [ticketingSaving, setTicketingSaving] = useState(false);
+
   const [notificationPhone, setNotificationPhone] = useState("");
   const [notificationSaving, setNotificationSaving] = useState(false);
   const [notificationSaved, setNotificationSaved] = useState(false);
@@ -2091,6 +2094,7 @@ function SettingsTab() {
       .then((d) => {
         setPortalEnabled(d.members_portal_enabled === "true");
         setBookingsNavEnabled(d.bookings_nav_enabled === "true");
+        setTicketingEnabled(d.ticketing_enabled !== "false");
         setInviteTemplate(
           d.invite_sms_template ?? "You should apply for The View — a members-only night out. {link}"
         );
@@ -2109,6 +2113,20 @@ function SettingsTab() {
     });
     setBookingsNavEnabled(newVal);
     setBookingsNavSaving(false);
+  }
+
+  async function toggleTicketing() {
+    if (ticketingEnabled === null) return;
+    if (ticketingEnabled && !confirm("Turn off ticketing everywhere? Every event goes back to free signups until you turn it on again. Sold tickets stay valid.")) return;
+    setTicketingSaving(true);
+    const newVal = !ticketingEnabled;
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "ticketing_enabled", value: String(newVal) }),
+    });
+    setTicketingEnabled(newVal);
+    setTicketingSaving(false);
   }
 
   async function saveNotificationPhone() {
@@ -2151,6 +2169,29 @@ function SettingsTab() {
   return (
     <div className="max-w-xl space-y-8">
       <h2 className="font-display text-xl sm:text-2xl text-espresso font-light">Settings</h2>
+
+      <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="font-body text-sm font-medium text-espresso">Ticketing</p>
+            <p className="font-body text-xs text-tan leading-relaxed">
+              Master switch for paid and tiered tickets. Each event also has its own Tickets switch (off by default). Turning this off makes every event free again instantly — nothing is deleted.
+            </p>
+          </div>
+          <button
+            onClick={toggleTicketing}
+            disabled={ticketingSaving || ticketingEnabled === null}
+            className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${ticketingEnabled ? "bg-espresso" : "bg-tan/30"}`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${ticketingEnabled ? "translate-x-6" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
+        <p className={`font-body text-xs font-medium ${ticketingEnabled ? "text-green-600" : "text-tan/50"}`}>
+          {ticketingEnabled === null ? "Loading…" : ticketingEnabled ? "Ticketing available (still off per event until you turn it on)" : "Ticketing is off everywhere"}
+        </p>
+      </div>
 
       <div className="bg-white border border-tan/20 rounded-lg p-6 space-y-4 shadow-sm">
         <div className="flex items-center justify-between gap-6">

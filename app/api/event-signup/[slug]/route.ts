@@ -5,6 +5,8 @@ import { eventHasEnded } from "@/lib/eventSignup";
 import { getSignupEvent } from "@/lib/eventSignup-server";
 import { createOptInToken } from "@/lib/optInToken";
 import { recordLinkEvent } from "@/lib/signupLinkStats";
+import { pickTier } from "@/lib/tickets";
+import { claimFreeTicket, loadTiers, spotsTaken, startCheckout, ticketsActiveFor } from "@/lib/tickets-server";
 
 export async function GET(
   _req: NextRequest,
@@ -72,6 +74,103 @@ export async function POST(
         .limit(1)
         .maybeSingle();
   const existing = byPhone ?? byEmail;
+
+  // Ticketed event: members and "anyone" tiers get a ticket (free → straight
+  // onto the list, paid → Stripe checkout). Anyone who can't get a tier
+  // right now falls through to the normal flow below.
+  let ticketedNoTier = false;
+  if (await ticketsActiveFor(event)) {
+    const isMember = existing?.status === "approved";
+    const tiers = await loadTiers(event.id);
+    // Rejected people always go back through review instead of buying in.
+    const tier = existing?.status === "rejected" ? null : pickTier(tiers, { channel: "online", isMember });
+    const full = (await spotsTaken(event.id)) >= event.capacity;
+
+    if (tier && !full) {
+      if (existing && isMember) {
+        const { data: onList } = await supabase
+          .from("rsvps")
+          .select("id")
+          .eq("event_id", event.id)
+          .eq("contact_id", existing.id)
+          .maybeSingle();
+        if (onList) {
+          await recordLinkEvent(event.id, source, "submit");
+          return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
+        }
+      }
+
+      let contactId = existing?.id;
+      if (existing) {
+        if (sms_opt_in && existing.sms_opted_out && existing.sms_opt_out_source === "signup") {
+          await supabase.from("contacts").update({ sms_opted_out: false, sms_opt_out_source: null }).eq("id", existing.id);
+        }
+      } else {
+        // Non-members buying an "anyone" ticket get in for this event and
+        // land in Pending for a membership decision later.
+        const { data, error } = await supabase
+          .from("contacts")
+          .insert({
+            name: `${first_name.trim()} ${last_name.trim()}`,
+            email: cleanEmail,
+            phone: normalizedPhone,
+            ig_handle: ig_handle.trim(),
+            referred_by: referred_by?.trim() || null,
+            status: "pending",
+            sms_opted_out: !sms_opt_in,
+            sms_opt_out_source: sms_opt_in ? null : "signup",
+          })
+          .select("id")
+          .single();
+        if (error || !data) return NextResponse.json({ error: "Failed to submit. Please try again." }, { status: 500 });
+        contactId = data.id;
+      }
+
+      const buyerName = existing?.name ?? `${first_name.trim()} ${last_name.trim()}`;
+      const blocked = existing?.sms_opted_out && existing.sms_opt_out_source !== "signup" ? { texts_blocked: true } : {};
+      try {
+        if (tier.price_cents === 0) {
+          await claimFreeTicket({ eventId: event.id, tier, contactId: contactId!, buyerName, channel: "online" });
+          await recordLinkEvent(event.id, source, "submit");
+          return NextResponse.json({ result: "on_list", contact_id: contactId, ...blocked });
+        }
+        const url = await startCheckout({
+          event,
+          tier,
+          contactId: contactId!,
+          buyerName,
+          email: cleanEmail,
+          channel: "online",
+          returnPath: `/e/${event.signup_slug}`,
+          origin: req.nextUrl.origin,
+        });
+        await recordLinkEvent(event.id, source, "submit");
+        return NextResponse.json({ result: "checkout", checkout_url: url, contact_id: contactId });
+      } catch (err) {
+        console.error("Ticket error:", err);
+        return NextResponse.json({ error: "Couldn't start checkout. Please try again." }, { status: 500 });
+      }
+    }
+
+    if (isMember && existing) {
+      // Sold out (or no member tier open) → waitlist, same as a full event.
+      const { data: onList } = await supabase
+        .from("rsvps")
+        .select("id")
+        .eq("event_id", event.id)
+        .eq("contact_id", existing.id)
+        .maybeSingle();
+      if (onList) return NextResponse.json({ result: "already_on_list", contact_id: existing.id });
+      await supabase
+        .from("waitlist")
+        .upsert({ event_id: event.id, contact_id: existing.id, party_size: 1 }, { onConflict: "event_id,contact_id" });
+      await recordLinkEvent(event.id, source, "submit");
+      return NextResponse.json({ result: "waitlisted", contact_id: existing.id });
+    }
+    // Non-member with no ticket open to them → normal review flow, but not
+    // auto-added on approval (they'd come back for a ticket as a member).
+    ticketedNoTier = true;
+  }
 
   if (existing?.status === "approved") {
     // Same opt-in handling as below: a fresh "Yes, text me" undoes an earlier
@@ -162,7 +261,7 @@ export async function POST(
     declinedTexts = !sms_opt_in;
   }
 
-  const { error: signupError } = await supabase
+  const { error: signupError } = ticketedNoTier ? { error: null } : await supabase
     .from("event_signups")
     .upsert(
       // was_rejected is only ever set, never cleared by a later resubmit.
@@ -180,5 +279,6 @@ export async function POST(
     contact_id: contactId,
     ...(declinedTexts ? { opt_in_token: createOptInToken(contactId) } : {}),
     ...(textsBlocked ? { texts_blocked: true } : {}),
+    ...(ticketedNoTier ? { ticket_after_approval: true } : {}),
   });
 }

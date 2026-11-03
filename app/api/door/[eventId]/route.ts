@@ -39,5 +39,18 @@ export async function GET(
     return nameA.localeCompare(nameB);
   });
 
-  return NextResponse.json({ event, rsvps: sorted });
+  // "Paid $X" labels for guests with a ticket or door cover.
+  const { data: orders } = await supabase
+    .from("ticket_orders")
+    .select("rsvp_id, status, amount_cents, fee_cents, channel")
+    .eq("event_id", eventId)
+    .in("status", ["paid", "cash", "free"])
+    .not("rsvp_id", "is", null);
+  const paid: Record<string, string> = {};
+  for (const o of orders ?? []) {
+    const cents = o.amount_cents + o.fee_cents;
+    paid[o.rsvp_id] = o.status === "free" ? "Free ticket" : `Paid $${(cents / 100).toFixed(cents % 100 ? 2 : 0)}${o.channel === "door" ? " at door" : " online"}`;
+  }
+
+  return NextResponse.json({ event, rsvps: sorted, paid });
 }

@@ -17,6 +17,7 @@ type EventStat = {
   gender: { male: number; female: number; unsure: number };
   barRevenue: number | null;
   otherRevenue: number | null;
+  ticketRevenue: number;
   expenses: number | null;
   profit: number | null;
   barPerGuest: number | null;
@@ -179,6 +180,9 @@ function FinancialsRow({ event, onSaved }: { event: EventStat; onSaved: () => vo
       <td className="font-body text-sm text-espresso py-2 pr-3 whitespace-nowrap">{event.title}</td>
       <td className="py-2 pr-3">{field(bar, setBar, "0")}</td>
       <td className="py-2 pr-3">{field(other, setOther, "0")}</td>
+      <td className="font-body text-sm py-2 pr-3 whitespace-nowrap text-espresso">
+        {event.ticketRevenue > 0 ? money(event.ticketRevenue) : <span className="text-tan">—</span>}
+      </td>
       <td className="py-2 pr-3">{field(expenses, setExpenses, "0")}</td>
       <td className="font-body text-sm py-2 pr-3 whitespace-nowrap">
         {event.profit != null ? (
@@ -246,6 +250,7 @@ export function InsightsTab() {
     events: withProfit.length,
     bar: withProfit.reduce((t, e) => t + (e.barRevenue ?? 0), 0),
     other: withProfit.reduce((t, e) => t + (e.otherRevenue ?? 0), 0),
+    tickets: withProfit.reduce((t, e) => t + e.ticketRevenue, 0),
     expenses: withProfit.reduce((t, e) => t + (e.expenses ?? 0), 0),
     profit: withProfit.reduce((t, e) => t + e.profit!, 0),
   };
@@ -311,13 +316,13 @@ export function InsightsTab() {
 
       <Section
         title="Money"
-        note="Type in each event's numbers after the night. The site can't see bar sales or costs on its own. Other income = tickets, sponsors, etc. Profit (after expenses) is split 65% to us, 35% to Dylan."
+        note="Type in each event's numbers after the night. The site can't see bar sales or costs on its own. Other income = sponsors, etc. Tickets come in automatically (after card fees). Profit (after expenses) is split 65% to us, 35% to Dylan."
       >
         <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full text-left border-collapse min-w-[48rem] mx-4 sm:mx-0">
+          <table className="w-full text-left border-collapse min-w-[54rem] mx-4 sm:mx-0">
             <thead>
               <tr className="border-b border-tan/20">
-                {["Event", "Bar sales", "Other income", "Expenses", "Profit", `Us (${Math.round(OUR_SHARE * 100)}%)`, `Dylan (${Math.round((1 - OUR_SHARE) * 100)}%)`, ""].map((h) => (
+                {["Event", "Bar sales", "Other income", "Tickets", "Expenses", "Profit", `Us (${Math.round(OUR_SHARE * 100)}%)`, `Dylan (${Math.round((1 - OUR_SHARE) * 100)}%)`, ""].map((h) => (
                   <th key={h} className="font-body text-[10px] tracking-widest uppercase text-tan font-medium pb-2 pr-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -336,6 +341,7 @@ export function InsightsTab() {
                   </td>
                   <td className="pt-3 pr-3">{money(totals.bar)}</td>
                   <td className="pt-3 pr-3">{money(totals.other)}</td>
+                  <td className="pt-3 pr-3">{money(totals.tickets)}</td>
                   <td className="pt-3 pr-3">{money(totals.expenses)}</td>
                   <td className={`pt-3 pr-3 ${totals.profit >= 0 ? "text-green-700" : "text-rust"}`}>{money(totals.profit)}</td>
                   <td className="pt-3 pr-3">{money(totals.profit * OUR_SHARE)}</td>

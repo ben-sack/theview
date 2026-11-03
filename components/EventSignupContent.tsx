@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { normalizePhone, isUSPhoneNumber } from "@/lib/phone";
 import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
+import { formatCents, buyerFeeCents, type TicketInfo } from "@/lib/tickets";
 
 type SignupEvent = {
   title: string;
@@ -63,10 +64,12 @@ function Star({ size }: { size: number }) {
 export function EventSignupContent({
   slug,
   event,
+  tickets,
   status,
 }: {
   slug: string;
   event: SignupEvent;
+  tickets?: TicketInfo | null;
   status: "open" | "preview" | "closed" | "ended";
 }) {
   const [form, setForm] = useState<FormState>({
@@ -88,6 +91,39 @@ export function EventSignupContent({
   const [optInError, setOptInError] = useState("");
   const [source, setSource] = useState("direct");
   const [textsBlocked, setTextsBlocked] = useState(false);
+  const [ticketAfterApproval, setTicketAfterApproval] = useState(false);
+  const [paid, setPaid] = useState<{ amountCents: number; feeCents: number; tierName: string | null } | null>(null);
+  const [checkoutNotice, setCheckoutNotice] = useState("");
+
+  // Coming back from Stripe: ?paid=<session> confirms the ticket,
+  // ?canceled=<order> releases the held spot.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("paid");
+    const canceled = params.get("canceled");
+    if (!sessionId && !canceled) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    if (canceled) {
+      setCheckoutNotice("Payment canceled — you weren't charged. You can try again below.");
+      fetch("/api/tickets/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: canceled }),
+      }).catch(() => {});
+      return;
+    }
+    fetch(`/api/tickets/confirm?session_id=${encodeURIComponent(sessionId!)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.order?.status === "paid") {
+          setPaid({ amountCents: d.order.amountCents, feeCents: d.order.feeCents, tierName: d.order.tierName });
+          setResult("on_list");
+        } else {
+          setCheckoutNotice("We couldn't confirm your payment yet. If you were charged, you're covered — refresh in a minute or text us.");
+        }
+      })
+      .catch(() => setCheckoutNotice("We couldn't confirm your payment yet. If you were charged, you're covered — refresh in a minute or text us."));
+  }, []);
 
   // Counts one visit per browser tab session (refreshes don't recount).
   // Admin previews of a page that's off aren't counted.
@@ -159,6 +195,11 @@ export function EventSignupContent({
         setError(data.error || "Something went wrong. Please try again.");
         return;
       }
+      if (data.result === "checkout" && data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      setTicketAfterApproval(!!data.ticket_after_approval);
       setResult(data.result);
       if (data.contact_id) prepareInvite(data.contact_id);
       setTextsBlocked(!!data.texts_blocked);
@@ -300,6 +341,8 @@ export function EventSignupContent({
                 inviteSmsHref={inviteSmsHref}
                 needsOptIn={!!optIn}
                 textsBlocked={textsBlocked}
+                paid={paid}
+                ticketAfterApproval={ticketAfterApproval}
                 optingIn={optingIn}
                 optInError={optInError}
                 onOptIn={optInToTexts}
@@ -356,6 +399,45 @@ export function EventSignupContent({
                           Spots are limited. Add your details and we&apos;ll text you once you&apos;re on.
                         </p>
                       </div>
+
+                      {checkoutNotice && (
+                        <p className="font-body text-xs text-cream/70 border border-rust/30 rounded px-3 py-2">{checkoutNotice}</p>
+                      )}
+
+                      {tickets && tickets.tiers.length > 0 && (
+                        <div className="border border-rust/25 rounded divide-y divide-rust/15 mb-2">
+                          {tickets.tiers.map((t, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-center justify-between gap-3 px-3 py-2 font-body text-xs ${
+                                t.state === "current" ? "text-ivory" : "text-cream/35"
+                              }`}
+                            >
+                              <span className="min-w-0">
+                                <span className={t.state === "sold_out" || t.state === "ended" ? "line-through" : ""}>{t.name}</span>
+                                <span className="block text-[10px] tracking-[0.15em] uppercase text-cream/40">
+                                  {[
+                                    t.audience === "members" ? "Members" : null,
+                                    t.channel === "door" ? "At the door" : null,
+                                    t.state === "sold_out" ? "Sold out" : t.state === "ended" ? "Ended" : null,
+                                    t.state === "current" && t.remaining != null ? `${t.remaining} left` : null,
+                                    t.state !== "ended" && t.ends_at
+                                      ? `Until ${new Date(t.ends_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </span>
+                              </span>
+                              <span className="shrink-0 font-medium">
+                                {t.price_cents === 0
+                                  ? "Free"
+                                  : `${formatCents(t.price_cents)}${tickets.feeToBuyer ? ` + ${formatCents(buyerFeeCents(t.price_cents))} fee` : ""}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -430,8 +512,13 @@ export function EventSignupContent({
                         disabled={loading}
                         className="w-full mt-2 bg-ivory text-espresso font-body text-sm font-medium tracking-[0.25em] uppercase py-4 rounded hover:bg-cream transition-colors duration-200 disabled:opacity-50"
                       >
-                        {loading ? "Sending…" : "Submit"}
+                        {loading ? "Sending…" : tickets ? "Continue" : "Submit"}
                       </button>
+                      {tickets && (
+                        <p className="font-body text-[10px] tracking-[0.15em] text-cream/40 text-center">
+                          Paid tickets go to secure checkout. You&apos;ll see your price before paying.
+                        </p>
+                      )}
                     </form>
                   ) : (
                     <div className="space-y-2 text-center py-4">
@@ -493,6 +580,8 @@ function ResultMessage({
   inviteSmsHref,
   needsOptIn,
   textsBlocked,
+  paid,
+  ticketAfterApproval,
   optingIn,
   optInError,
   onOptIn,
@@ -504,6 +593,8 @@ function ResultMessage({
   inviteSmsHref: string | null;
   needsOptIn: boolean;
   textsBlocked: boolean;
+  paid: { amountCents: number; feeCents: number; tierName: string | null } | null;
+  ticketAfterApproval: boolean;
   optingIn: boolean;
   optInError: string;
   onOptIn: () => void;
@@ -532,6 +623,19 @@ function ResultMessage({
       body: `${eventTitle} is at capacity right now. We'll text you if a spot opens up.`,
     },
   };
+  if (paid && result === "on_list") {
+    copy.on_list = {
+      eyebrow: "Ticket confirmed",
+      title: "You're on the list.",
+      body: `Paid ${formatCents(paid.amountCents + paid.feeCents)}${paid.tierName ? ` · ${paid.tierName}` : ""}. See you at ${eventTitle} — a receipt is on its way to your email.`,
+    };
+  }
+  if (ticketAfterApproval && result === "pending") {
+    copy.pending = {
+      ...copy.pending,
+      body: "Once you're approved, come back to this page to get your ticket.",
+    };
+  }
   const c = textsBlocked && result === "pending"
     ? {
         eyebrow: "Request received",

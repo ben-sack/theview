@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 import { resizeImage } from "@/lib/resizeImage";
+import { TicketsBox } from "@/components/TicketsBox";
 import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE } from "@/lib/eventSignup";
 import { BlastPhotoPicker, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
@@ -1105,6 +1106,9 @@ export default function EventDetailPage() {
                 </>
               )}
             </div>
+
+            {/* Paid / tiered tickets — off by default */}
+            <TicketsBox eventId={id} signupLive={signupEnabled} hasSlug={!!event.signup_slug} />
 
             {/* Manually add members to the guest list */}
             <div className="bg-white rounded-lg border border-tan/20 shadow-sm p-4 sm:p-6 space-y-4">

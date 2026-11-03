@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
 const SIGNUP_EVENT_FIELDS =
-  "id, title, date, end_time, city, partners, capacity, signup_enabled, signup_slug, signup_flyer_url, signup_headline, signup_copy";
+  "id, title, date, end_time, city, partners, capacity, signup_enabled, signup_slug, signup_flyer_url, signup_headline, signup_copy, tickets_enabled, ticket_fee_to_buyer";
 
 export async function getSignupEvent(slug: string) {
   const { data: event } = await supabase

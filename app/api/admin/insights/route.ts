@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const [eventsRes, rsvpsRes, contactsRes, waitlistRes, linkRes, inboundRes, twilio] = await Promise.all([
+  const [eventsRes, rsvpsRes, contactsRes, waitlistRes, linkRes, inboundRes, twilio, ticketsRes] = await Promise.all([
     supabase.from("events").select("*").order("date", { ascending: true }),
     supabase
       .from("rsvps")
@@ -60,7 +60,11 @@ export async function GET(req: NextRequest) {
     supabase.from("signup_link_events").select("source, kind").range(0, 99999),
     supabase.from("inbound_messages").select("keyword_type, received_at").eq("keyword_type", "stop").range(0, 49999),
     twilioMonthly(),
+    // Ticket money after card fees. Tolerates the table not existing.
+    supabase.from("ticket_orders").select("event_id, net_cents").in("status", ["paid", "cash"]).range(0, 49999),
   ]);
+  const ticketCents = new Map<string, number>();
+  for (const o of ticketsRes.data ?? []) ticketCents.set(o.event_id, (ticketCents.get(o.event_id) ?? 0) + o.net_cents);
 
   if (eventsRes.error || rsvpsRes.error || contactsRes.error) {
     return NextResponse.json(
@@ -95,6 +99,7 @@ export async function GET(req: NextRequest) {
     const bar = e.bar_revenue != null ? Number(e.bar_revenue) : null;
     const other = e.other_revenue != null ? Number(e.other_revenue) : null;
     const expenses = e.expenses != null ? Number(e.expenses) : null;
+    const tickets = (ticketCents.get(e.id) ?? 0) / 100;
     return {
       id: e.id,
       title: e.title?.trim(),
@@ -111,8 +116,9 @@ export async function GET(req: NextRequest) {
       gender,
       barRevenue: bar,
       otherRevenue: other,
+      ticketRevenue: tickets,
       expenses,
-      profit: bar != null && expenses != null ? bar + (other ?? 0) - expenses : null,
+      profit: bar != null && expenses != null ? bar + (other ?? 0) + tickets - expenses : null,
       barPerGuest: bar != null && attended ? bar / attended : null,
     };
   });

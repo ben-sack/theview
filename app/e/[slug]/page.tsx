@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getSignupEvent } from "@/lib/eventSignup-server";
 import { eventHasEnded } from "@/lib/eventSignup";
 import { EventSignupContent } from "@/components/EventSignupContent";
+import { loadTiers, ticketsActiveFor } from "@/lib/tickets-server";
+import { publicTiers, type TicketInfo } from "@/lib/tickets";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,9 @@ export default async function EventSignupPage({ params }: { params: Promise<{ sl
   // Admins can preview a page before turning it on.
   const isAdmin = (await cookies()).get("admin_auth")?.value === "true";
   const preview = !event.signup_enabled && !ended && isAdmin;
+  const tickets: TicketInfo | null = (await ticketsActiveFor(event))
+    ? { tiers: publicTiers(await loadTiers(event.id)), feeToBuyer: !!event.ticket_fee_to_buyer }
+    : null;
 
   return (
     <EventSignupContent
@@ -48,6 +53,7 @@ export default async function EventSignupPage({ params }: { params: Promise<{ sl
         headline: event.signup_headline,
         copy: event.signup_copy,
       }}
+      tickets={tickets}
       status={ended ? "ended" : event.signup_enabled ? "open" : preview ? "preview" : "closed"}
     />
   );

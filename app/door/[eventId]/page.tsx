@@ -32,6 +32,8 @@ export default function DoorCheckinPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestParty, setNewGuestParty] = useState(1);
+  const [newGuestCover, setNewGuestCover] = useState("");
+  const [paidLabels, setPaidLabels] = useState<Record<string, string>>({});
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export default function DoorCheckinPage() {
         if (!d) return;
         setEvent(d.event);
         setRsvps(d.rsvps ?? []);
+        setPaidLabels(d.paid ?? {});
         setLoading(false);
       });
   }, [eventId, router]);
@@ -60,13 +63,15 @@ export default function DoorCheckinPage() {
     const res = await fetch(`/api/door/${eventId}/add-guest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newGuestName.trim(), party_size: newGuestParty }),
+      body: JSON.stringify({ name: newGuestName.trim(), party_size: newGuestParty, cover: newGuestCover }),
     });
     if (res.ok) {
-      const { rsvp } = await res.json();
+      const { rsvp, paidLabel } = await res.json();
       setRsvps((prev) => [...prev, rsvp]);
+      if (paidLabel) setPaidLabels((prev) => ({ ...prev, [rsvp.id]: paidLabel }));
       setNewGuestName("");
       setNewGuestParty(1);
+      setNewGuestCover("");
       setShowAddForm(false);
     }
     setAdding(false);
@@ -220,6 +225,20 @@ export default function DoorCheckinPage() {
                 ))}
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <p className="font-body text-xs text-tan/60 uppercase tracking-widest shrink-0">Cover paid</p>
+              <div className="flex items-center bg-tan/10 border border-tan/20 rounded px-3 py-1.5 w-32 focus-within:border-rust">
+                <span className="text-tan mr-1 font-body text-sm">$</span>
+                <input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={newGuestCover}
+                  onChange={(e) => setNewGuestCover(e.target.value)}
+                  className="w-full min-w-0 bg-transparent font-body text-sm text-ivory placeholder-tan/40 focus:outline-none"
+                />
+              </div>
+              <p className="font-body text-[11px] text-tan/50">cash or card reader — total for the party</p>
+            </div>
           </form>
         )}
       </div>
@@ -266,6 +285,9 @@ export default function DoorCheckinPage() {
                       <p className={`font-body text-sm truncate ${checkedIn ? "text-green-500/70" : "text-tan"}`}>
                         @{handle.replace(/^@/, "")}
                       </p>
+                    )}
+                    {paidLabels[rsvp.id] && (
+                      <p className="font-body text-xs text-amber mt-0.5">{paidLabels[rsvp.id]}</p>
                     )}
                     {checkedIn && rsvp.checked_in_at && (
                       <p className="font-body text-xs text-green-600 mt-0.5">
