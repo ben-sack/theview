@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { formatCents, type TierWithCounts, type TierAudience, type TierChannel } from "@/lib/tickets";
+import { formatCents, TIER_DISPLAY_LABELS, type TierDisplay, type TierWithCounts, type TierAudience, type TierChannel } from "@/lib/tickets";
 
 type Order = {
   id: string;
@@ -71,6 +71,7 @@ export function TicketsBox({ eventId, signupLive, hasSlug }: { eventId: string; 
   const [mode, setMode] = useState<"test" | "live">("test");
   const [enabled, setEnabled] = useState(false);
   const [feeToBuyer, setFeeToBuyer] = useState(false);
+  const [display, setDisplay] = useState<TierDisplay>("all");
   const [tiers, setTiers] = useState<EditTier[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [doorUrl, setDoorUrl] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export function TicketsBox({ eventId, signupLive, hasSlug }: { eventId: string; 
         setMode(d.stripeMode);
         setEnabled(d.tickets_enabled);
         setFeeToBuyer(d.ticket_fee_to_buyer);
+        setDisplay(d.ticket_tier_display);
         setTiers(
           (d.tiers as TierWithCounts[]).map((t) => ({
             id: t.id,
@@ -141,7 +143,7 @@ export function TicketsBox({ eventId, signupLive, hasSlug }: { eventId: string; 
     const res = await fetch(`/api/admin/events/${eventId}/tickets`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tickets_enabled: nextEnabled, ticket_fee_to_buyer: feeToBuyer, tiers: payload }),
+      body: JSON.stringify({ tickets_enabled: nextEnabled, ticket_fee_to_buyer: feeToBuyer, ticket_tier_display: display, tiers: payload }),
     });
     const d = await res.json().catch(() => ({}));
     setSaving(false);
@@ -307,6 +309,31 @@ export function TicketsBox({ eventId, signupLive, hasSlug }: { eventId: string; 
             <button type="button" onClick={() => setTiers((prev) => [...prev, blankTier()])} className="font-body text-xs text-rust hover:underline">
               + Add tier
             </button>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-body text-xs font-medium text-espresso">Show on signup page</p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(TIER_DISPLAY_LABELS) as TierDisplay[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setDisplay(k)}
+                  className={`font-body text-xs px-3 py-1.5 rounded border transition-colors ${
+                    display === k ? "border-rust bg-rust/5 text-rust" : "border-tan/40 text-tan hover:border-rust"
+                  }`}
+                >
+                  {TIER_DISPLAY_LABELS[k]}
+                </button>
+              ))}
+            </div>
+            <p className="font-body text-[11px] text-tan">
+              {display === "current"
+                ? "Guests only see the price they'd pay right now. When it sells out, the next tier replaces it."
+                : display === "current_past"
+                  ? "Sold-out tiers stay listed (crossed out), so guests see prices going up — upcoming tiers stay hidden."
+                  : "Guests see every tier: sold out, current and upcoming."}
+            </p>
           </div>
 
           <label className="flex items-start gap-2 font-body text-xs text-espresso cursor-pointer">

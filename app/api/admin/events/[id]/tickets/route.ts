@@ -16,7 +16,7 @@ export async function GET(
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, signup_slug, tickets_enabled, ticket_fee_to_buyer")
+    .select("id, signup_slug, tickets_enabled, ticket_fee_to_buyer, ticket_tier_display")
     .eq("id", id)
     .single();
   if (error || !event) return NextResponse.json({ error: error?.message ?? "Event not found." }, { status: 500 });
@@ -40,6 +40,7 @@ export async function GET(
     stripeMode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "live" : "test",
     tickets_enabled: !!event.tickets_enabled,
     ticket_fee_to_buyer: !!event.ticket_fee_to_buyer,
+    ticket_tier_display: event.ticket_tier_display ?? "all",
     tiers,
     orders: (orders ?? []).map((o) => ({
       ...o,
@@ -68,7 +69,8 @@ export async function PUT(
 ) {
   if (!isAuthed(req)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { id } = await params;
-  const { tickets_enabled, ticket_fee_to_buyer, tiers } = await req.json().catch(() => ({}));
+  const { tickets_enabled, ticket_fee_to_buyer, ticket_tier_display, tiers } = await req.json().catch(() => ({}));
+  const display = ["current", "current_past", "all"].includes(ticket_tier_display) ? ticket_tier_display : "all";
 
   if (!Array.isArray(tiers)) return NextResponse.json({ error: "Tiers are required." }, { status: 400 });
   for (const t of tiers as TierInput[]) {
@@ -111,7 +113,7 @@ export async function PUT(
 
   const { error } = await supabase
     .from("events")
-    .update({ tickets_enabled: !!tickets_enabled, ticket_fee_to_buyer: !!ticket_fee_to_buyer })
+    .update({ tickets_enabled: !!tickets_enabled, ticket_fee_to_buyer: !!ticket_fee_to_buyer, ticket_tier_display: display })
     .eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

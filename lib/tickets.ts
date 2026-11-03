@@ -107,3 +107,17 @@ export function publicTiers(tiers: TierWithCounts[], now = Date.now()): PublicTi
       };
     });
 }
+
+// Which tiers the public signup page lists (per event).
+export type TierDisplay = "current" | "current_past" | "all";
+export const TIER_DISPLAY_LABELS: Record<TierDisplay, string> = {
+  current: "Only the current tier",
+  current_past: "Current + sold-out tiers",
+  all: "All tiers (past, current, upcoming)",
+};
+
+export function filterPublicTiers(tiers: PublicTier[], display: TierDisplay): PublicTier[] {
+  if (display === "current") return tiers.filter((t) => t.state === "current");
+  if (display === "current_past") return tiers.filter((t) => t.state !== "upcoming");
+  return tiers;
+}

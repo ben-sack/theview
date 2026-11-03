@@ -5,7 +5,7 @@ import { getSignupEvent } from "@/lib/eventSignup-server";
 import { eventHasEnded } from "@/lib/eventSignup";
 import { EventSignupContent } from "@/components/EventSignupContent";
 import { loadTiers, ticketsActiveFor } from "@/lib/tickets-server";
-import { publicTiers, type TicketInfo } from "@/lib/tickets";
+import { filterPublicTiers, publicTiers, type TicketInfo, type TierDisplay } from "@/lib/tickets";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,10 @@ export default async function EventSignupPage({ params }: { params: Promise<{ sl
   const isAdmin = (await cookies()).get("admin_auth")?.value === "true";
   const preview = !event.signup_enabled && !ended && isAdmin;
   const tickets: TicketInfo | null = (await ticketsActiveFor(event))
-    ? { tiers: publicTiers(await loadTiers(event.id)), feeToBuyer: !!event.ticket_fee_to_buyer }
+    ? {
+        tiers: filterPublicTiers(publicTiers(await loadTiers(event.id)), (event.ticket_tier_display ?? "all") as TierDisplay),
+        feeToBuyer: !!event.ticket_fee_to_buyer,
+      }
     : null;
 
   return (

@@ -627,7 +627,7 @@ function ResultMessage({
     copy.on_list = {
       eyebrow: "Ticket confirmed",
       title: "You're on the list.",
-      body: `Paid ${formatCents(paid.amountCents + paid.feeCents)}${paid.tierName ? ` · ${paid.tierName}` : ""}. See you at ${eventTitle} — a receipt is on its way to your email.`,
+      body: `See you at ${eventTitle}.`,
     };
   }
   if (ticketAfterApproval && result === "pending") {
