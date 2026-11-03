@@ -5,6 +5,7 @@ import { GALLERY_MAX_PHOTOS } from "@/lib/gallery";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 import { resizeImage } from "@/lib/resizeImage";
+import { MessagesTab } from "@/components/MessagesTab";
 import { BlastPhotoPicker, BlastTestSend, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Contact = {
@@ -26,9 +27,9 @@ type Contact = {
   previously_rejected?: boolean;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "message" | "blast" | "referrals" | "settings";
+type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "inbox" | "message" | "blast" | "referrals" | "settings";
 
-const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "bookings", "message", "blast", "referrals", "settings"];
+const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "bookings", "inbox", "message", "blast", "referrals", "settings"];
 
 export default function AdminPage() {
   return (
@@ -56,9 +57,10 @@ function AdminPageInner() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadTexts, setUnreadTexts] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery" || status === "bookings") return;
+    if (status === "inbox" || status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery" || status === "bookings") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -88,6 +90,14 @@ function AdminPageInner() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    fetch("/api/admin/messages?count=1")
+      .then((r) => r.json())
+      .then((d) => setUnreadTexts(d.unread ?? 0))
+      .catch(() => {});
+  }, [authed]);
 
   useEffect(() => {
     if (authed) fetchContacts(tab);
@@ -216,6 +226,7 @@ function AdminPageInner() {
     events: "Events",
     gallery: "Gallery",
     bookings: "Bookings",
+    inbox: "Messages",
     message: "Automated Messages",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -251,6 +262,11 @@ function AdminPageInner() {
               }`}
             >
               {TAB_LABELS[t]}
+              {t === "inbox" && unreadTexts > 0 && (
+                <span className="ml-2 bg-rust text-ivory text-[10px] font-body font-medium px-1.5 py-0.5 rounded-full">
+                  {unreadTexts}
+                </span>
+              )}
               {t === "pending" && pendingCount > 0 && (
                 <span className="ml-2 bg-rust text-ivory text-[10px] font-body font-medium px-1.5 py-0.5 rounded-full">
                   {pendingCount}
@@ -268,6 +284,8 @@ function AdminPageInner() {
           <PendingTab contacts={contacts} onUpdate={updateStatus} onApproveAll={approveAll} />
         ) : tab === "approved" ? (
           <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} onUpdate={updateStatus} />
+        ) : tab === "inbox" ? (
+          <MessagesTab onUnreadChange={setUnreadTexts} />
         ) : tab === "message" ? (
           <MessageTab />
         ) : tab === "rejected" ? (
