@@ -6,6 +6,7 @@ import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
 import { resizeImage } from "@/lib/resizeImage";
 import { MessagesTab } from "@/components/MessagesTab";
+import { InsightsTab } from "@/components/InsightsTab";
 import { BlastPhotoPicker, BlastTestSend, type BlastPhoto, TWILIO_PRICE_PER_SEGMENT, TWILIO_PRICE_PER_MMS, MMS_MAX_CHARS, OPT_OUT_FOOTER } from "@/components/BlastAttachments";
 
 type Contact = {
@@ -27,9 +28,9 @@ type Contact = {
   previously_rejected?: boolean;
 };
 
-type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "inbox" | "message" | "blast" | "referrals" | "settings";
+type Tab = "pending" | "approved" | "rejected" | "events" | "gallery" | "bookings" | "inbox" | "insights" | "message" | "blast" | "referrals" | "settings";
 
-const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "bookings", "inbox", "message", "blast", "referrals", "settings"];
+const TABS: Tab[] = ["pending", "approved", "rejected", "events", "gallery", "bookings", "inbox", "insights", "message", "blast", "referrals", "settings"];
 
 export default function AdminPage() {
   return (
@@ -60,7 +61,7 @@ function AdminPageInner() {
   const [unreadTexts, setUnreadTexts] = useState(0);
 
   const fetchContacts = useCallback(async (status: Tab) => {
-    if (status === "inbox" || status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery" || status === "bookings") return;
+    if (status === "inbox" || status === "insights" || status === "message" || status === "blast" || status === "referrals" || status === "rejected" || status === "events" || status === "gallery" || status === "bookings") return;
     setLoading(true);
     const res = await fetch(`/api/admin/contacts?status=${status}`);
     if (res.status === 401) { setAuthed(false); setLoading(false); return; }
@@ -227,6 +228,7 @@ function AdminPageInner() {
     gallery: "Gallery",
     bookings: "Bookings",
     inbox: "Messages",
+    insights: "Insights",
     message: "Automated Messages",
     blast: "Text Blasts",
     referrals: "Referrals",
@@ -286,6 +288,8 @@ function AdminPageInner() {
           <MembersTab contacts={contacts} onExport={exportCSV} onDelete={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))} onUpdate={updateStatus} />
         ) : tab === "inbox" ? (
           <MessagesTab onUnreadChange={setUnreadTexts} />
+        ) : tab === "insights" ? (
+          <InsightsTab />
         ) : tab === "message" ? (
           <MessageTab />
         ) : tab === "rejected" ? (
