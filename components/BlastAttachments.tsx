@@ -2,13 +2,16 @@
 import { useState } from "react";
 import { resizeImage } from "@/lib/resizeImage";
 
-// Twilio's US toll-free rates. Real bills also include a separate
-// per-message carrier surcharge (varies by recipient's carrier): roughly
-// $0.003–0.005 for a text segment, $0.007–0.010 for a picture message.
-export const TWILIO_PRICE_PER_SEGMENT = 0.0083;
+// What a send actually costs on our Twilio bill (US toll-free): Twilio's
+// own rate plus the carrier surcharge Twilio passes through, which the
+// per-message price in Twilio's logs leaves out. Carrier figures are the
+// averages from our Sep–Oct 2026 bills.
+// Text: $0.0083/segment + ~$0.0043 carrier fee.
+export const TWILIO_PRICE_PER_SEGMENT = 0.0126;
 // A picture message (MMS) is one flat price for the photo plus up to
 // 1,600 characters of text — no per-segment billing.
-export const TWILIO_PRICE_PER_MMS = 0.022;
+// $0.022 + ~$0.0085 carrier fee.
+export const TWILIO_PRICE_PER_MMS = 0.0305;
 export const MMS_MAX_CHARS = 1600;
 // Every blast appends this footer server-side.
 export const OPT_OUT_FOOTER = "\n\nReply STOP to opt out";
