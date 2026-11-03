@@ -225,7 +225,10 @@ export async function POST(
   if (existing) {
     contactId = existing.id;
     const update: Record<string, unknown> = {};
-    if (wasRejected) update.status = "pending";
+    if (wasRejected) {
+      update.status = "pending";
+      update.was_rejected = true;
+    }
     // A fresh "Yes, text me" overrides an earlier form decline, but never a
     // STOP reply or carrier block — those must stay opted out.
     if (sms_opt_in && existing.sms_opted_out && existing.sms_opt_out_source === "signup") {

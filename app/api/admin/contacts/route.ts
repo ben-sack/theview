@@ -44,7 +44,9 @@ export async function GET(req: NextRequest) {
     const tagged = data.map((c) => ({
       ...c,
       signup_events: byContact.get(c.id)?.titles ?? [],
-      previously_rejected: byContact.get(c.id)?.wasRejected ?? false,
+      // Flag on the contact covers comebacks that don't create a signup row
+      // (e.g. trying to buy a ticket after being rejected).
+      previously_rejected: !!c.was_rejected || (byContact.get(c.id)?.wasRejected ?? false),
     }));
     return NextResponse.json({ contacts: tagged });
   }
