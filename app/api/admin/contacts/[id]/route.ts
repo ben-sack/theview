@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import twilio from "twilio";
-import { DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE, eventHasEnded, fillSignupApprovedTemplate } from "@/lib/eventSignup";
+import {
+  DEFAULT_SIGNUP_APPROVED_TEMPLATE,
+  DEFAULT_SIGNUP_WAITLISTED_TEMPLATE,
+  RETURNING_SIGNUP_APPROVED_TEMPLATE,
+  RETURNING_SIGNUP_WAITLISTED_TEMPLATE,
+  eventHasEnded,
+  fillSignupApprovedTemplate,
+} from "@/lib/eventSignup";
 
 function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "true";
@@ -72,7 +79,13 @@ async function addToSignupEvents(contactId: string): Promise<AddedEvent[]> {
   return added;
 }
 
-async function sendApprovalSms(contactId: string, phone: string, name: string, listEvent?: AddedEvent) {
+async function sendApprovalSms(
+  contactId: string,
+  phone: string,
+  name: string,
+  listEvent: AddedEvent | undefined,
+  alreadyWelcomed: boolean
+): Promise<boolean> {
   // Someone approved off an event signup page gets one combined
   // "welcome + you're on the list" (or "…on the waitlist") text instead of
   // the plain welcome.
@@ -88,9 +101,13 @@ async function sendApprovalSms(contactId: string, phone: string, name: string, l
     .maybeSingle();
 
   const template =
-    data?.value ||
-    (!listEvent ? null : listEvent.waitlisted ? DEFAULT_SIGNUP_WAITLISTED_TEMPLATE : DEFAULT_SIGNUP_APPROVED_TEMPLATE);
-  if (!template) return;
+    listEvent && alreadyWelcomed
+      ? listEvent.waitlisted
+        ? RETURNING_SIGNUP_WAITLISTED_TEMPLATE
+        : RETURNING_SIGNUP_APPROVED_TEMPLATE
+      : data?.value ||
+        (!listEvent ? null : listEvent.waitlisted ? DEFAULT_SIGNUP_WAITLISTED_TEMPLATE : DEFAULT_SIGNUP_APPROVED_TEMPLATE);
+  if (!template) return false;
 
   const body = listEvent
     ? fillSignupApprovedTemplate(template, name, listEvent)
@@ -108,6 +125,7 @@ async function sendApprovalSms(contactId: string, phone: string, name: string, l
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phone,
     });
+    return true;
   } catch (err: unknown) {
     const twilioErr = err as { code?: number };
     if (twilioErr.code === 21610) {
@@ -152,7 +170,7 @@ export async function PATCH(
 
   const { data: contact, error: fetchError } = await supabase
     .from("contacts")
-    .select("name, phone, sms_opted_out")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -179,9 +197,16 @@ export async function PATCH(
     await supabase.from("event_signups").delete().eq("contact_id", id);
   }
 
-  if (status === "approved" && contact?.phone && !contact.sms_opted_out) {
+  // The plain welcome only ever goes out once, so moving someone back from
+  // Rejected doesn't re-welcome them. If they just got onto an event list they
+  // asked to join, they still hear about it, minus the welcome wording.
+  const alreadyWelcomed = !!contact?.welcome_sent_at;
+  if (status === "approved" && contact?.phone && !contact.sms_opted_out && (addedEvents[0] || !alreadyWelcomed)) {
     try {
-      await sendApprovalSms(id, contact.phone, contact.name, addedEvents[0]);
+      const sent = await sendApprovalSms(id, contact.phone, contact.name, addedEvents[0], alreadyWelcomed);
+      if (sent && !alreadyWelcomed) {
+        await supabase.from("contacts").update({ welcome_sent_at: new Date().toISOString() }).eq("id", id);
+      }
     } catch (smsError) {
       console.error("SMS failed:", smsError);
     }

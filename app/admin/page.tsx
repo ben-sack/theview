@@ -1444,7 +1444,7 @@ function GalleryTab() {
   const [uploadError, setUploadError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
-  const [stats, setStats] = useState<{ views: number; downloads: number } | null>(null);
+  const [stats, setStats] = useState<{ views: number; downloads: number; downloaders: number; untrackedDownloads: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/gallery")
@@ -1532,6 +1532,14 @@ function GalleryTab() {
           <div>
             <p className="font-display text-xl text-espresso font-light">{stats.downloads}</p>
             <p className="font-body text-[10px] tracking-widest uppercase text-tan">Photos Downloaded</p>
+          </div>
+          <div className="w-px h-8 bg-tan/20" />
+          <div>
+            <p className="font-display text-xl text-espresso font-light">{stats.downloaders}</p>
+            <p className="font-body text-[10px] tracking-widest uppercase text-tan">People Downloaded</p>
+            {stats.untrackedDownloads > 0 && (
+              <p className="font-body text-[10px] text-tan/60">Not counting {stats.untrackedDownloads} older {stats.untrackedDownloads === 1 ? "download" : "downloads"}</p>
+            )}
           </div>
         </div>
       )}

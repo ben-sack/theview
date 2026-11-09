@@ -7,6 +7,13 @@ export const DEFAULT_SIGNUP_APPROVED_TEMPLATE =
 export const DEFAULT_SIGNUP_WAITLISTED_TEMPLATE =
   "Welcome to The View, {name}. You're approved and on the waitlist for {event} on {date}. We'll text you if a spot opens up. Save this contact for event invites and updates: https://theview.la/contact.vcf Msg&Data rates may apply.";
 
+// Sent instead of the two above to someone who already got a welcome text in
+// the past (e.g. approved, later rejected, then signed up through an event page).
+export const RETURNING_SIGNUP_APPROVED_TEMPLATE =
+  "You're on the list for {event} on {date}. See you soon!";
+export const RETURNING_SIGNUP_WAITLISTED_TEMPLATE =
+  "You're on the waitlist for {event} on {date}. We'll text you if a spot opens up.";
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

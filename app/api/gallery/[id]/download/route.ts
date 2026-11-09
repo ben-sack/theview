@@ -30,7 +30,12 @@ export async function GET(
   const buffer = Buffer.from(await file.arrayBuffer());
   const watermarked = await watermarkPhoto(buffer);
 
-  await supabase.from("gallery_downloads").insert([{ photo_id: id }]);
+  const visitorId = req.nextUrl.searchParams.get("v")?.slice(0, 64) || null;
+  const { error: logError } = await supabase.from("gallery_downloads").insert([{ photo_id: id, visitor_id: visitorId }]);
+  if (logError) {
+    // Still count the download if the visitor_id column isn't there yet.
+    await supabase.from("gallery_downloads").insert([{ photo_id: id }]);
+  }
 
   return new NextResponse(new Uint8Array(watermarked), {
     headers: {

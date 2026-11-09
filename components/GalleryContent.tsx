@@ -46,6 +46,23 @@ function distributeMasonry(photos: Photo[], columnCount: number) {
   return columns;
 }
 
+// Anonymous per-browser ID, used only to count how many different people
+// have downloaded photos.
+let sessionVisitorId = "";
+function getVisitorId(): string {
+  const make = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try {
+    let id = localStorage.getItem("gallery_visitor_id");
+    if (!id) {
+      id = make();
+      localStorage.setItem("gallery_visitor_id", id);
+    }
+    return id;
+  } catch {
+    return (sessionVisitorId ||= make());
+  }
+}
+
 export function GalleryContent() {
   const [event, setEvent] = useState<GalleryEvent>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -97,16 +114,17 @@ export function GalleryContent() {
     const chosen = photos.filter((p) => selected.has(p.id));
     if (chosen.length === 0) return;
     setDownloading(true);
+    const visitor = encodeURIComponent(getVisitorId());
     try {
       if (chosen.length === 1) {
-        const res = await fetch(`/api/gallery/${chosen[0].id}/download`);
+        const res = await fetch(`/api/gallery/${chosen[0].id}/download?v=${visitor}`);
         const blob = await res.blob();
         triggerDownload(blob, `the-view-photo.jpg`);
       } else {
         const zip = new JSZip();
         await Promise.all(
           chosen.map(async (p, i) => {
-            const res = await fetch(`/api/gallery/${p.id}/download`);
+            const res = await fetch(`/api/gallery/${p.id}/download?v=${visitor}`);
             const blob = await res.blob();
             zip.file(`the-view-${i + 1}.jpg`, blob);
           })
