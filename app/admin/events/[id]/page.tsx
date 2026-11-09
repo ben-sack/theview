@@ -70,6 +70,7 @@ type AddCandidate = {
   ig_handle: string | null;
   textable: boolean;
   waitlisted: boolean;
+  created_at: string;
 };
 
 const DEFAULT_LIST_ADD_TEMPLATE = `Hey {name}, you've been added to the list for {event} on {date}. See you soon!`;
@@ -120,6 +121,7 @@ export default function EventDetailPage() {
   const [addCandidates, setAddCandidates] = useState<AddCandidate[]>([]);
   const [addSelectedIds, setAddSelectedIds] = useState<Set<string>>(new Set());
   const [addSearch, setAddSearch] = useState("");
+  const [addSort, setAddSort] = useState<"date" | "alpha">("date");
   const [addNotify, setAddNotify] = useState(true);
   const [addMessage, setAddMessage] = useState("");
   const [adding, setAdding] = useState(false);
@@ -539,6 +541,11 @@ export default function EventDetailPage() {
   const addQuery = addSearch.trim().toLowerCase();
   const filteredAddCandidates = addCandidates.filter((c) =>
     !addQuery || c.name.toLowerCase().includes(addQuery) || (c.ig_handle ?? "").toLowerCase().includes(addQuery)
+  );
+  const sortedAddCandidates = [...filteredAddCandidates].sort((a, b) =>
+    addSort === "alpha"
+      ? a.name.localeCompare(b.name)
+      : new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || a.name.localeCompare(b.name)
   );
   const addSelectedTextable = addCandidates.filter((c) => addSelectedIds.has(c.id) && c.textable).length;
   const addSegments = getSegmentCount(addMessage);
@@ -1150,11 +1157,26 @@ export default function EventDetailPage() {
                       onChange={(e) => setAddSearch(e.target.value)}
                       className="w-full bg-ivory border border-tan/20 rounded px-3 py-2 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust"
                     />
+                    <div className="flex items-center gap-1">
+                      <span className="font-body text-[11px] text-tan/60 mr-1">Sort</span>
+                      {([["date", "Newest members"], ["alpha", "A–Z"]] as const).map(([v, label]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setAddSort(v)}
+                          className={`font-body text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                            addSort === v ? "bg-espresso text-ivory border-espresso" : "border-tan/30 text-tan hover:border-tan/50"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="max-h-56 overflow-y-auto border border-tan/20 rounded divide-y divide-tan/10">
-                      {filteredAddCandidates.length === 0 ? (
+                      {sortedAddCandidates.length === 0 ? (
                         <p className="font-body text-xs text-tan italic px-3 py-4 text-center">{addQuery ? "No matches." : "Every member is already on the list."}</p>
                       ) : (
-                        filteredAddCandidates.map((c) => (
+                        sortedAddCandidates.map((c) => (
                           <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-ivory/60 cursor-pointer">
                             <input
                               type="checkbox"

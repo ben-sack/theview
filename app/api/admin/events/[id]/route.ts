@@ -93,7 +93,7 @@ export async function GET(
   // the list doesn't require texting them.
   const { data: members, error: membersError } = await supabase
     .from("contacts")
-    .select("id, name, ig_handle, phone, sms_opted_out")
+    .select("id, name, ig_handle, phone, sms_opted_out, created_at")
     .eq("status", "approved")
     .order("name", { ascending: true })
     .range(0, 9999);
@@ -111,6 +111,7 @@ export async function GET(
       ig_handle: m.ig_handle,
       textable: !!m.phone && !m.sms_opted_out,
       waitlisted: waitlistedIds.has(m.id),
+      created_at: m.created_at,
     }));
 
   // Pending people who asked to join this event's list through its public
