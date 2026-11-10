@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 // Link sources tracked on public signup pages. Must match the keys the
 // signup page sends (SOCIAL_REFS in EventSignupContent, plus friend/direct).
-export const LINK_SOURCES = ["tiktok", "instagram", "friend", "direct"] as const;
+export const LINK_SOURCES = ["tiktok", "instagram", "partiful", "friend", "direct"] as const;
 
 export function cleanSource(source: unknown): string {
   return typeof source === "string" && (LINK_SOURCES as readonly string[]).includes(source)

@@ -53,6 +53,7 @@ const OUR_SHARE = 0.65;
 const LINK_LABELS: Record<string, string> = {
   tiktok: "TikTok link",
   instagram: "Instagram link",
+  partiful: "Partiful link",
   friend: "Friend invites",
   direct: "Plain link / other",
 };

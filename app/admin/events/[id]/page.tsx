@@ -988,6 +988,7 @@ export default function EventDetailPage() {
                       {[
                         { key: "tiktok", label: "TikTok link", ref: "tiktok" },
                         { key: "instagram", label: "Instagram link", ref: "instagram" },
+                        { key: "partiful", label: "Partiful link", ref: "partiful" },
                         { key: "friend", label: "Friend invites" },
                         { key: "direct", label: "Plain link / other" },
                       ].map((row) => {

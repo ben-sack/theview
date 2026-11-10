@@ -34,6 +34,7 @@ type Result = "pending" | "on_list" | "already_on_list" | "waitlisted";
 const SOCIAL_REFS: Record<string, string> = {
   tiktok: "TikTok",
   instagram: "Instagram",
+  partiful: "Partiful",
 };
 
 // Which link someone arrived on, for the admin's visit/submission counts.
