@@ -74,6 +74,10 @@ type AddCandidate = {
   created_at: string;
 };
 
+// Wording that asks people to pass the page along. The description also
+// shows on members' personal RSVP page, so it gets a warning in the editor.
+const SHARE_WORDING = /\b(share|sharing|forward|forwarding|link|url|repost|pass (it|this) (on|along)|send (this|it)|tell your friends|invite your friends|bring your friends)\b/i;
+
 // Same length as a real RSVP short link (https://theview.la/r/ + 6-char code).
 const SAMPLE_RSVP_LINK = "https://theview.la/r/xxxxxx";
 
@@ -1057,6 +1061,16 @@ export default function EventDetailPage() {
                       placeholder="What's the night about? Leave a blank line between paragraphs."
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-y leading-relaxed"
                     />
+                    {SHARE_WORDING.test(`${signupHeadline}\n${signupCopy}`) &&
+                      !`${signupHeadline}\n${signupCopy}`.toLowerCase().includes(`theview.la/e/${signupSlug}`.toLowerCase()) && (
+                      <div className="rounded border border-amber/40 bg-amber/10 px-3 py-2.5 space-y-1">
+                        <p className="font-body text-xs font-medium text-espresso">Heads up: this mentions sharing</p>
+                        <p className="font-body text-[11px] text-espresso/80 leading-relaxed">
+                          This headline and description also show on the RSVP page members get from the RSVP Invite Blast, and that page&apos;s link is personal to each member. If someone forwards it, whoever opens it would RSVP as them. To be safe, write out the public link instead, like:{" "}
+                          <span className="font-mono bg-white/70 px-1 rounded">Share theview.la/e/{signupSlug || "your-event"} with your friends.</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {signupStatus && (

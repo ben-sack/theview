@@ -26,7 +26,6 @@ type Event = {
 type PageState = "loading" | "ready" | "submitting" | "confirmed" | "waitlisted" | "already_waitlisted" | "error";
 
 const INSTAGRAM_URL = "https://www.instagram.com/theview.la/";
-const SHARE_PATTERN = /\b(link|links|url|share|sharing|shared|forward|forwarding|repost|pass (it|this) (on|along))\b/i;
 
 // Same scattered stars as the signup page.
 const STARS = [
@@ -131,23 +130,7 @@ export default function RsvpPage() {
       ? `${formatDoorTime(start)} – ${formatDoorTime(new Date(event!.end_time))}`
       : formatDoorTime(start)
     : "";
-  // The description is written for the public signup page, where "share this
-  // link" means the public link. Here the URL is the member's personal RSVP
-  // link, so sentences asking people to share/forward a link are left out
-  // (Invite a Friend below sends the right link instead).
-  const paragraphs = (event?.signup_copy ?? "")
-    .split(/\n\s*\n/)
-    .map((p) => {
-      const p2 = p.trim();
-      // Leave untouched paragraphs exactly as written (keeps line breaks).
-      if (!SHARE_PATTERN.test(p2)) return p2;
-      return p2
-        .split(/(?<=[.!?])\s+/)
-        .filter((sentence) => !SHARE_PATTERN.test(sentence))
-        .join(" ")
-        .trim();
-    })
-    .filter(Boolean);
+  const paragraphs = (event?.signup_copy ?? "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   const flyerUrl = event?.signup_flyer_url ?? null;
   const showResult = state === "confirmed" || state === "waitlisted" || state === "already_waitlisted";
   const atCapacity = !!event && rsvpCount >= event.capacity;
