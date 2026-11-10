@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
+import { formatEventDateShort } from "@/lib/messageFormat";
 import { resizeImage } from "@/lib/resizeImage";
 import { TicketsBox } from "@/components/TicketsBox";
 import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE } from "@/lib/eventSignup";
@@ -72,6 +73,9 @@ type AddCandidate = {
   waitlisted: boolean;
   created_at: string;
 };
+
+// Same length as a real RSVP short link (https://theview.la/r/ + 6-char code).
+const SAMPLE_RSVP_LINK = "https://theview.la/r/xxxxxx";
 
 const DEFAULT_LIST_ADD_TEMPLATE = `Hey {name}, you've been added to the list for {event} on {date}. See you soon!`;
 
@@ -530,11 +534,33 @@ export default function EventDetailPage() {
     ? new Date(event.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
     : "";
 
-  const blastRecipientCount = selectedIds.size > 0 ? selectedIds.size : inviteCandidates.length;
-  const blastSegments = getSegmentCount(blastTemplate);
-  const blastCost = blastSegments > 0
-    ? (blastRecipientCount * (invitePhoto ? TWILIO_PRICE_PER_MMS : blastSegments * TWILIO_PRICE_PER_SEGMENT)).toFixed(2)
+  // Builds each person's text exactly as the blast route does (name, event,
+  // date, a same-length short link, opt-out footer), so the estimate matches
+  // what Twilio actually bills rather than just the template as typed.
+  const blastRecipients = selectedIds.size > 0 ? inviteCandidates.filter((c) => selectedIds.has(c.id)) : inviteCandidates;
+  const blastRecipientCount = blastRecipients.length;
+  const blastBase = event && blastTemplate.trim()
+    ? blastTemplate.trim()
+        .replace(/\{event\}/gi, event.title)
+        .replace(/\{date\}/gi, formatEventDateShort(new Date(event.date)))
+    : "";
+  const buildInvite = (name: string) =>
+    blastBase.replace(/\{name\}/gi, name.split(" ")[0]).replace(/\{rsvp_link\}/gi, SAMPLE_RSVP_LINK) + OPT_OUT_FOOTER;
+  const blastTexts = blastBase ? (blastRecipients.length > 0 ? blastRecipients.map((c) => buildInvite(c.name)) : [buildInvite("Alex")]) : [];
+  const blastSegmentCounts = blastTexts.map(getSegmentCount);
+  const blastLengths = blastTexts.map((t) => t.length);
+  const blastMinSegments = blastSegmentCounts.length ? Math.min(...blastSegmentCounts) : 0;
+  const blastMaxSegments = blastSegmentCounts.length ? Math.max(...blastSegmentCounts) : 0;
+  const blastMinLength = blastLengths.length ? Math.min(...blastLengths) : 0;
+  const blastMaxLength = blastLengths.length ? Math.max(...blastLengths) : 0;
+  const blastTotalSegments = blastRecipients.length > 0 ? blastSegmentCounts.reduce((a, b) => a + b, 0) : 0;
+  const blastCost = blastBase
+    ? (invitePhoto ? blastRecipientCount * TWILIO_PRICE_PER_MMS : blastTotalSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
+  const blastTemplateSpecial = !!blastBase && !isGsm7Compatible(buildInvite("Alex"));
+  const blastSpecialNameCount = blastBase && !blastTemplateSpecial
+    ? blastTexts.filter((t) => !isGsm7Compatible(t)).length
+    : 0;
   // Approximate: {name}/{rsvp_link} expand per person after this check.
   const inviteTooLong = !!invitePhoto && blastTemplate.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
 
@@ -1325,7 +1351,12 @@ export default function EventDetailPage() {
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between font-body text-xs text-tan">
-                      <span>{blastTemplate.length} characters · {invitePhoto ? "picture message" : `${blastSegments} ${blastSegments === 1 ? "segment" : "segments"}`}</span>
+                      <span>
+                        {blastMinLength === blastMaxLength ? blastMaxLength : `${blastMinLength}–${blastMaxLength}`} characters as sent ·{" "}
+                        {invitePhoto
+                          ? "picture message"
+                          : `${blastMinSegments === blastMaxSegments ? blastMaxSegments : `${blastMinSegments}–${blastMaxSegments}`} ${blastMaxSegments === 1 ? "segment" : "segments"} per text`}
+                      </span>
                       {blastCost !== null && (
                         <span>Est. cost: <strong className="text-espresso">${blastCost}</strong> + carrier fees</span>
                       )}
@@ -1335,9 +1366,14 @@ export default function EventDetailPage() {
                         Picture messages can hold up to {MMS_MAX_CHARS - OPT_OUT_FOOTER.length} characters of text — shorten the message to send.
                       </p>
                     )}
-                    {!invitePhoto && !isGsm7Compatible(blastTemplate) && (
+                    {!invitePhoto && blastTemplateSpecial && (
                       <p className="font-body text-[11px] text-amber leading-relaxed">
                         Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+                      </p>
+                    )}
+                    {!invitePhoto && blastSpecialNameCount > 0 && (
+                      <p className="font-body text-[11px] text-amber leading-relaxed">
+                        {blastSpecialNameCount} {blastSpecialNameCount === 1 ? "person's name has" : "people's names have"} a special character, so {blastSpecialNameCount === 1 ? "their text costs" : "their texts cost"} more to send. This is included in the estimate.
                       </p>
                     )}
                     <button
