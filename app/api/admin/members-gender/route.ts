@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data: rows, error } = await supabase
     .from("contacts")
-    .select("id, name, gender_override")
+    .select("id, name, ig_handle, gender_override")
     .eq("status", "approved")
     .range(0, 9999);
 
@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     .map((c) => ({
       id: c.id,
       name: c.name,
+      ig_handle: c.ig_handle,
       gender: resolveGender(c.name, c.gender_override),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -567,7 +567,7 @@ function MembersTab({
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
   type GenderGroup = "male" | "female" | "unsure";
-  type GenderMember = { id: string; name: string; gender: GenderGroup };
+  type GenderMember = { id: string; name: string; ig_handle: string | null; gender: GenderGroup };
   const [genderCounts, setGenderCounts] = useState<{ male: number; female: number; unsure: number } | null>(null);
   const [genderMembers, setGenderMembers] = useState<GenderMember[]>([]);
   const [genderModalGroup, setGenderModalGroup] = useState<GenderGroup | null>(null);
@@ -693,7 +693,21 @@ function MembersTab({
                   .filter((m) => m.gender === genderModalGroup)
                   .map((m) => (
                     <div key={m.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                      <p className="font-body text-sm text-espresso truncate">{m.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-body text-sm text-espresso truncate">{m.name}</p>
+                        {m.ig_handle ? (
+                          <a
+                            href={`https://instagram.com/${m.ig_handle.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block font-body text-xs text-rust hover:underline truncate"
+                          >
+                            @{m.ig_handle.replace(/^@/, "")}
+                          </a>
+                        ) : (
+                          <p className="font-body text-xs text-tan/60 italic">No Instagram</p>
+                        )}
+                      </div>
                       <div className="flex gap-2 shrink-0">
                         {(["male", "female", "unsure"] as const)
                           .filter((g) => g !== m.gender)
