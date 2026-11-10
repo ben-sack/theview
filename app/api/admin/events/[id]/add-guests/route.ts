@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { formatEventDateShort } from "@/lib/messageFormat";
+import { chunk } from "@/lib/chunk";
 import twilio from "twilio";
 
 function isAuthed(req: NextRequest) {
@@ -38,24 +39,29 @@ export async function POST(
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
   }
 
-  const { data: contacts, error: contactsError } = await supabase
-    .from("contacts")
-    .select("id, name, phone, sms_opted_out")
-    .eq("status", "approved")
-    .in("id", contact_ids);
+  // Looked up in batches — one lookup with hundreds of IDs gets rejected.
+  const contacts: { id: string; name: string; phone: string | null; sms_opted_out: boolean }[] = [];
+  const existing: { contact_id: string }[] = [];
+  for (const ids of chunk([...new Set(contact_ids as string[])])) {
+    const { data, error: contactsError } = await supabase
+      .from("contacts")
+      .select("id, name, phone, sms_opted_out")
+      .eq("status", "approved")
+      .in("id", ids);
+    if (contactsError) {
+      return NextResponse.json({ error: contactsError.message }, { status: 500 });
+    }
+    contacts.push(...(data ?? []));
 
-  if (contactsError) {
-    return NextResponse.json({ error: contactsError.message }, { status: 500 });
-  }
-
-  const { data: existing, error: existingError } = await supabase
-    .from("rsvps")
-    .select("contact_id")
-    .eq("event_id", id)
-    .in("contact_id", contact_ids);
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
+    const { data: onList, error: existingError } = await supabase
+      .from("rsvps")
+      .select("contact_id")
+      .eq("event_id", id)
+      .in("contact_id", ids);
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+    existing.push(...(onList ?? []));
   }
 
   // Already on the list = skipped entirely, so they never get a duplicate text.
@@ -74,11 +80,9 @@ export async function POST(
     }
 
     // Anyone who was waiting on the waitlist is now on the real list.
-    await supabase
-      .from("waitlist")
-      .delete()
-      .eq("event_id", id)
-      .in("contact_id", toAdd.map((c) => c.id));
+    for (const ids of chunk(toAdd.map((c) => c.id))) {
+      await supabase.from("waitlist").delete().eq("event_id", id).in("contact_id", ids);
+    }
   }
 
   let texted = 0;

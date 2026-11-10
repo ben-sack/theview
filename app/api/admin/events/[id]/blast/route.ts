@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { getRsvpShortLink } from "@/lib/shortLink";
 import { formatEventDateShort } from "@/lib/messageFormat";
 import { isValidMediaUrl, mediaParams } from "@/lib/blastMedia";
+import { chunk } from "@/lib/chunk";
 import twilio from "twilio";
 
 const DEFAULT_TEMPLATE = `Hey {name}, you're invited to {event} on {date}. Spots are limited, RSVP here to claim yours: {rsvp_link}`;
@@ -42,21 +43,31 @@ export async function POST(
     return NextResponse.json({ error: "Select at least one person to send a test to." }, { status: 400 });
   }
 
-  let contactsQuery = supabase
-    .from("contacts")
-    .select("id, name, phone")
-    .eq("status", "approved")
-    .eq("sms_opted_out", false)
-    .not("phone", "is", null);
+  const textableContacts = () =>
+    supabase
+      .from("contacts")
+      .select("id, name, phone")
+      .eq("status", "approved")
+      .eq("sms_opted_out", false)
+      .not("phone", "is", null);
 
+  // A selection is looked up in batches — one lookup with hundreds of IDs
+  // is too long and gets rejected.
+  const contacts: { id: string; name: string; phone: string | null }[] = [];
   if (Array.isArray(contact_ids) && contact_ids.length > 0) {
-    contactsQuery = contactsQuery.in("id", contact_ids);
-  }
-
-  const { data: contacts, error: contactsError } = await contactsQuery.range(0, 9999);
-
-  if (contactsError) {
-    return NextResponse.json({ error: contactsError.message }, { status: 500 });
+    for (const ids of chunk([...new Set(contact_ids as string[])])) {
+      const { data, error: contactsError } = await textableContacts().in("id", ids);
+      if (contactsError) {
+        return NextResponse.json({ error: contactsError.message }, { status: 500 });
+      }
+      contacts.push(...(data ?? []));
+    }
+  } else {
+    const { data, error: contactsError } = await textableContacts().range(0, 9999);
+    if (contactsError) {
+      return NextResponse.json({ error: contactsError.message }, { status: 500 });
+    }
+    contacts.push(...(data ?? []));
   }
 
   const eventDate = formatEventDateShort(new Date(event.date));
