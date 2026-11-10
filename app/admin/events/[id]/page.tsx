@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSegmentCount, isGsm7Compatible } from "@/lib/sms";
-import { formatEventDateShort } from "@/lib/messageFormat";
+import { formatDoorTime, formatEventDateShort } from "@/lib/messageFormat";
 import { resizeImage } from "@/lib/resizeImage";
 import { TicketsBox } from "@/components/TicketsBox";
 import { slugify, DEFAULT_SIGNUP_APPROVED_TEMPLATE, DEFAULT_SIGNUP_WAITLISTED_TEMPLATE } from "@/lib/eventSignup";
@@ -594,12 +594,34 @@ export default function EventDetailPage() {
     return true;
   });
 
-  const textRecipientCount = textSelectedIds.size > 0 ? textSelectedIds.size : textableRsvps.length;
-  const eventMessageSegments = getSegmentCount(eventMessage);
-  const eventMessageCost = eventMessageSegments > 0
-    ? (textRecipientCount * (textPhoto ? TWILIO_PRICE_PER_MMS : eventMessageSegments * TWILIO_PRICE_PER_SEGMENT)).toFixed(2)
+  // Same idea as the invite estimate: build each guest's text the way the
+  // message route does (event info, first name, opt-out footer) and count that.
+  const textRecipients = textSelectedIds.size > 0 ? textCandidates.filter((c) => textSelectedIds.has(c.id)) : textCandidates;
+  const textRecipientCount = textRecipients.length;
+  const eventMessageBase = event && eventMessage.trim()
+    ? eventMessage
+        .replace(/\{event\}/gi, event.title)
+        .replace(/\{date\}/gi, formatEventDateShort(new Date(event.date)))
+        .replace(/\{door_time\}/gi, formatDoorTime(new Date(event.date)))
+        .replace(/\{address\}/gi, event.location || "the venue")
+    : "";
+  const buildEventText = (name: string) => eventMessageBase.replace(/\{name\}/gi, name.split(" ")[0]) + OPT_OUT_FOOTER;
+  const eventTexts = eventMessageBase ? (textRecipients.length > 0 ? textRecipients.map((c) => buildEventText(c.name)) : [buildEventText("Alex")]) : [];
+  const eventSegmentCounts = eventTexts.map(getSegmentCount);
+  const eventLengths = eventTexts.map((t) => t.length);
+  const eventMinSegments = eventSegmentCounts.length ? Math.min(...eventSegmentCounts) : 0;
+  const eventMaxSegments = eventSegmentCounts.length ? Math.max(...eventSegmentCounts) : 0;
+  const eventMinLength = eventLengths.length ? Math.min(...eventLengths) : 0;
+  const eventMaxLength = eventLengths.length ? Math.max(...eventLengths) : 0;
+  const eventTotalSegments = textRecipients.length > 0 ? eventSegmentCounts.reduce((a, b) => a + b, 0) : 0;
+  const eventMessageCost = eventMessageBase
+    ? (textPhoto ? textRecipientCount * TWILIO_PRICE_PER_MMS : eventTotalSegments * TWILIO_PRICE_PER_SEGMENT).toFixed(2)
     : null;
-  const textTooLong = !!textPhoto && eventMessage.length + OPT_OUT_FOOTER.length > MMS_MAX_CHARS;
+  const eventTemplateSpecial = !!eventMessageBase && !isGsm7Compatible(buildEventText("Alex"));
+  const eventSpecialNameCount = eventMessageBase && !eventTemplateSpecial
+    ? eventTexts.filter((t) => !isGsm7Compatible(t)).length
+    : 0;
+  const textTooLong = !!textPhoto && eventMaxLength > MMS_MAX_CHARS;
 
   if (loading) {
     return (
@@ -1527,7 +1549,12 @@ export default function EventDetailPage() {
                       className="w-full bg-ivory border border-tan/30 rounded px-4 py-3 font-body text-sm text-black placeholder-tan/40 focus:outline-none focus:border-rust resize-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between font-body text-xs text-tan">
-                      <span>{eventMessage.length} characters · {textPhoto ? "picture message" : `${eventMessageSegments} ${eventMessageSegments === 1 ? "segment" : "segments"}`}</span>
+                      <span>
+                        {eventMinLength === eventMaxLength ? eventMaxLength : `${eventMinLength}–${eventMaxLength}`} characters as sent ·{" "}
+                        {textPhoto
+                          ? "picture message"
+                          : `${eventMinSegments === eventMaxSegments ? eventMaxSegments : `${eventMinSegments}–${eventMaxSegments}`} ${eventMaxSegments === 1 ? "segment" : "segments"} per text`}
+                      </span>
                       {eventMessageCost !== null && (
                         <span>Est. cost: <strong className="text-espresso">${eventMessageCost}</strong> + carrier fees</span>
                       )}
@@ -1537,9 +1564,14 @@ export default function EventDetailPage() {
                         Picture messages can hold up to {MMS_MAX_CHARS - OPT_OUT_FOOTER.length} characters of text — shorten the message to send.
                       </p>
                     )}
-                    {!textPhoto && !isGsm7Compatible(eventMessage) && (
+                    {!textPhoto && eventTemplateSpecial && (
                       <p className="font-body text-[11px] text-amber leading-relaxed">
                         Contains an emoji or special character — this forces shorter 70-character segments instead of 160, increasing cost per send.
+                      </p>
+                    )}
+                    {!textPhoto && eventSpecialNameCount > 0 && (
+                      <p className="font-body text-[11px] text-amber leading-relaxed">
+                        {eventSpecialNameCount} {eventSpecialNameCount === 1 ? "person's name has" : "people's names have"} a special character, so {eventSpecialNameCount === 1 ? "their text costs" : "their texts cost"} more to send. This is included in the estimate.
                       </p>
                     )}
                     <button
