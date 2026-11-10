@@ -12,7 +12,10 @@ type Event = {
   partners: string | null;
   capacity: number;
   allow_guests: boolean;
+  signup_slug: string | null;
 };
+
+const INSTAGRAM_URL = "https://www.instagram.com/theview.la/";
 
 export default function RsvpPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -27,17 +30,25 @@ export default function RsvpPage() {
   const [waitlistCount, setWaitlistCount] = useState(0);
   const [inviteSmsHref, setInviteSmsHref] = useState<string | null>(null);
 
+  // Invites go to this event's signup page when it has one open (same message
+  // as that page's own "Invite a Friend"); otherwise to the general access form.
   useEffect(() => {
-    if (!contactId) return;
+    if (!contactId || !event) return;
+    const siteUrl = window.location.origin;
+    if (event.signup_slug) {
+      const link = `${siteUrl}/e/${event.signup_slug}?ref=${contactId}`;
+      const message = `You've been invited to ${event.title}, apply here: ${link}`;
+      setInviteSmsHref(`sms:?&body=${encodeURIComponent(message)}`);
+      return;
+    }
     fetch("/api/invite-template")
       .then((r) => r.json())
       .then((d) => {
-        const siteUrl = window.location.origin;
         const referralLink = `${siteUrl}/?ref=${contactId}`;
         const message = (d.template || "").replace(/\{link\}/g, referralLink);
         setInviteSmsHref(`sms:?&body=${encodeURIComponent(message)}`);
       });
-  }, [contactId]);
+  }, [contactId, event]);
 
   useEffect(() => {
     fetch(`/api/rsvp/${eventId}${contactId ? `?c=${contactId}` : ""}`)
@@ -101,7 +112,21 @@ export default function RsvpPage() {
       />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-espresso/50 via-transparent to-espresso/70" />
 
-      <div className="relative z-10 flex flex-col items-center gap-8 text-center max-w-sm w-full">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-6 py-5">
+        <a href="/" className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors">
+          ← The View
+        </a>
+        <a
+          href={INSTAGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors"
+        >
+          Instagram
+        </a>
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center gap-8 text-center max-w-sm w-full py-20">
         <Image src="/logo.png" alt="" aria-hidden width={120} height={90} className="w-14 h-auto opacity-70" priority />
 
         {state === "loading" && (

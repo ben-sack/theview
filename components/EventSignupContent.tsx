@@ -166,7 +166,7 @@ export function EventSignupContent({
   // links to its page so friends can sign up for it directly.
   function prepareInvite(contactId: string) {
     const link = `${window.location.origin}/e/${slug}?ref=${contactId}`;
-    const message = `You've been referred to attend ${event.title}, apply here: ${link}`;
+    const message = `You've been invited to ${event.title}, apply here: ${link}`;
     setInviteSmsHref(`sms:?&body=${encodeURIComponent(message)}`);
   }
 

@@ -10,7 +10,7 @@ export async function GET(
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, title, date, end_time, city, partners, capacity, allow_guests")
+    .select("id, title, date, end_time, city, partners, capacity, allow_guests, signup_enabled, signup_slug")
     .eq("id", eventId)
     .single();
 
@@ -48,8 +48,10 @@ export async function GET(
     alreadyRsvped = !!existingRsvp;
   }
 
+  // Only expose the event's public signup page link while that page is open.
+  const { signup_enabled, signup_slug, ...publicEvent } = event;
   return NextResponse.json({
-    event,
+    event: { ...publicEvent, signup_slug: signup_enabled ? signup_slug : null },
     rsvp_count: rsvpCount ?? 0,
     waitlist_count: waitlistCount ?? 0,
     already_waitlisted: alreadyWaitlisted,
