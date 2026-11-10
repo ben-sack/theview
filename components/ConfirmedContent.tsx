@@ -58,8 +58,9 @@ export function ConfirmedContent() {
         {smsHref && (
           <a
             href={smsHref}
-            className="font-body text-[10px] tracking-[0.3em] uppercase text-cream/90 bg-amber/20 border border-amber/40 rounded-sm py-3 px-8 hover:bg-amber/30 transition-colors"
+            className="inline-flex items-center justify-center gap-2.5 bg-tan text-espresso font-body text-sm font-medium tracking-[0.2em] uppercase py-4 px-8 rounded hover:bg-smoke transition-colors duration-200 shadow-[0_12px_32px_-14px_rgba(158,128,96,0.6)]"
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-4.6A8.4 8.4 0 0 1 3.5 11.5 8.5 8.5 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z" /></svg>
             Invite a Friend
           </a>
         )}

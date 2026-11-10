@@ -721,13 +721,14 @@ function ResultMessage({
       )}
       {inviteSmsHref && (
         <div className="border-t border-rust/15 pt-6 mt-4 space-y-3 max-w-sm">
-          <p className="font-body text-xs text-tan/50 leading-relaxed">
+          <p className="font-body text-sm text-cream/75 leading-relaxed">
             Know someone who should be here? Invite them — we&apos;ll take note of your referral!
           </p>
           <a
             href={inviteSmsHref}
-            className="block w-full text-center border border-tan/25 text-tan/60 hover:text-cream/70 hover:border-tan/40 font-body text-xs tracking-widest uppercase py-3 rounded transition-colors duration-200"
+            className="inline-flex items-center justify-center gap-2.5 bg-tan text-espresso font-body text-sm font-medium tracking-[0.2em] uppercase py-4 px-8 rounded hover:bg-smoke transition-colors duration-200 shadow-[0_12px_32px_-14px_rgba(158,128,96,0.6)]"
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-4.6A8.4 8.4 0 0 1 3.5 11.5 8.5 8.5 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z" /></svg>
             Invite a Friend
           </a>
         </div>
