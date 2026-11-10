@@ -308,9 +308,24 @@ export function EventSignupContent({
       )}
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pt-8 pb-16 md:pt-12">
-        <a href="/" className="inline-block signup-rise">
-          <Image src="/logo.png" alt="The View" width={120} height={90} className="w-12 h-auto opacity-70" priority />
-        </a>
+        <div className="flex items-center justify-between gap-4 signup-rise">
+          <a href="/" className="inline-block">
+            <Image src="/logo.png" alt="The View" width={120} height={90} className="w-12 h-auto opacity-70" priority />
+          </a>
+          <div className="flex items-center gap-5">
+            <a href="/" className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors">
+              The View
+            </a>
+            <a
+              href="https://www.instagram.com/theview.la/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-body text-[10px] tracking-[0.36em] uppercase text-tan/50 hover:text-tan/80 transition-colors"
+            >
+              Instagram
+            </a>
+          </div>
+        </div>
 
         <div className="mt-8 md:mt-10 md:grid md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-14 lg:gap-20 md:items-start">
           {/* Flyer */}
